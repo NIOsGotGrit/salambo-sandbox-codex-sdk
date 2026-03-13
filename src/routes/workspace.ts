@@ -1,16 +1,16 @@
 import { Router, type Request, type Response } from 'express';
 import path from 'path';
 import { promises as fs } from 'fs';
-import { setupWorkspace } from '../workspace';
-import { stopFileWatcher } from '../services/file-sync';
+import { setupWorkspace } from '../core/workspace';
+import { stopFileWatcher } from '../core/file-sync';
 import {
   clearActiveSession,
   getActiveSession,
-} from '../services/session-state';
+} from '../core/session-state';
 import {
   downloadFileToPath,
   resolveSafeWorkspaceTargetPath,
-} from '../services/workspace-files';
+} from '../core/workspace-files';
 
 export function createWorkspaceRouter() {
   const router = Router();

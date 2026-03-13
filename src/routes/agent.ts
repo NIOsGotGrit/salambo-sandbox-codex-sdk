@@ -3,16 +3,16 @@ import {
   CODEX_MODEL,
   CODEX_PROVIDER,
   WORKSPACE_DIR,
-} from '../config';
-import { setupWorkspace } from '../workspace';
-import { buildStreamName, runAgentSession } from '../services/agent-session';
-import { getEventBackend, getLocalEvents } from '../services/event-store';
-import { ensureFileWatcher } from '../services/file-sync';
+} from '../config/env';
+import { setupWorkspace } from '../core/workspace';
+import { buildStreamName, runAgentSession } from '../core/agent-runner';
+import { getEventBackend, getLocalEvents } from '../core/event-store';
+import { ensureFileWatcher } from '../core/file-sync';
 import {
   clearActiveSession,
   getActiveSession,
   setActiveSession,
-} from '../services/session-state';
+} from '../core/session-state';
 
 export function createAgentRouter() {
   const router = Router();

@@ -1,4 +1,4 @@
-import type { WorkspacePaths } from '../workspace';
+import type { WorkspacePaths } from './workspace';
 
 export type ActiveSession = {
   sessionId: string;

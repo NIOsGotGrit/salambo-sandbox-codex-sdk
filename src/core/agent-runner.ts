@@ -8,8 +8,8 @@ import {
   CODEX_PROVIDER,
   SALAMBO_CODEX_PATH,
   S2_STREAM_PREFIX,
-} from '../config';
-import type { WorkspacePaths } from '../workspace';
+} from '../config/env';
+import type { WorkspacePaths } from './workspace';
 import {
   appendJsonEvent,
   createEventSink,
@@ -18,6 +18,7 @@ import {
   type EventSink,
 } from './event-store';
 import { clearActiveSession } from './session-state';
+import { applyTemplateSessionPolicy } from '../template/session-policy';
 
 export type RunSessionOptions = {
   sessionId: string;
@@ -32,25 +33,8 @@ export type RunSessionOptions = {
   workspace: WorkspacePaths;
 };
 
-export function buildStreamName(sessionId: string): string {
+export function buildStreamName(sessionId: string) {
   return `${S2_STREAM_PREFIX}:${sessionId}`;
-}
-
-function resolveSystemPrompt(context: unknown): string | undefined {
-  if (typeof context === 'string' && context.trim()) {
-    return context;
-  }
-
-  if (
-    context &&
-    typeof context === 'object' &&
-    typeof (context as { systemPrompt?: unknown }).systemPrompt === 'string'
-  ) {
-    const systemPrompt = (context as { systemPrompt: string }).systemPrompt.trim();
-    return systemPrompt || undefined;
-  }
-
-  return undefined;
 }
 
 function serializeError(error: unknown) {
@@ -86,19 +70,10 @@ async function publishSessionReady(params: {
 
 export async function runAgentSession(options: RunSessionOptions) {
   const sessionStartTime = Date.now();
-  console.log(`[${new Date().toISOString()}] ⚙️  DÉMARRAGE runAgentSession:`);
-  console.log(`  - Session interne: "${options.sessionId}"`);
-  console.log(`  - Session SDK: ${options.sdkSessionId ? `"${options.sdkSessionId}"` : 'sera généré'}`);
-  console.log(`  - Stream S2: "${options.streamName}"`);
-  console.log(`  - Type: ${options.isResuming ? 'REPRISE' : 'NOUVELLE'}`);
-  console.log(`  - Capture SDK ID: ${options.captureSdkSessionId}`);
-  console.log(`  - Prompt preview: "${options.prompt.substring(0, 100)}${options.prompt.length > 100 ? '...' : ''}"`);
-
   const stream = createEventSink(options.sessionId, options.streamName);
   const timestamp = () => new Date().toISOString();
   let sdkSessionId: string | undefined = options.sdkSessionId;
   let messageCount = 0;
-  const systemPrompt = resolveSystemPrompt(options.context);
   let sdkSession: SalamboSession | null = null;
   const abortSignal = options.abortController.signal;
 
@@ -126,37 +101,23 @@ export async function runAgentSession(options: RunSessionOptions) {
 
   abortSignal.addEventListener('abort', abortListener, { once: true });
 
-  console.log(
-    `[${new Date().toISOString()}] 📡 Event stream ready (${stream.kind}): "${options.streamName}"`,
-  );
-
-  try {
-    await appendJsonEvent(stream, {
-      type: 'session_init',
-      sessionId: options.sessionId,
-      workspace: options.workspace.root,
-      promptPreview: options.prompt.slice(0, 2000),
-      context: sanitizePayload(options.context ?? null),
-      timestamp: timestamp(),
-    });
-  } catch (streamError) {
-    console.error(`[${new Date().toISOString()}] 💥 ERREUR lors de l'envoi session_init:`, streamError);
-    throw streamError;
-  }
+  await appendJsonEvent(stream, {
+    type: 'session_init',
+    sessionId: options.sessionId,
+    workspace: options.workspace.root,
+    promptPreview: options.prompt.slice(0, 2000),
+    context: sanitizePayload(options.context ?? null),
+    timestamp: timestamp(),
+  });
 
   if (options.isResuming && sdkSessionId) {
-    try {
-      await publishSessionReady({
-        stream,
-        sdkSessionId,
-        sessionId: options.sessionId,
-        ourSessionId: options.ourSessionId,
-        timestamp: timestamp(),
-      });
-    } catch (streamError) {
-      console.error(`[${new Date().toISOString()}] 💥 ERREUR lors de l'envoi session_ready (reprise):`, streamError);
-      throw streamError;
-    }
+    await publishSessionReady({
+      stream,
+      sdkSessionId,
+      sessionId: options.sessionId,
+      ourSessionId: options.ourSessionId,
+      timestamp: timestamp(),
+    });
   }
 
   try {
@@ -164,17 +125,15 @@ export async function runAgentSession(options: RunSessionOptions) {
       model: CODEX_MODEL,
       provider: CODEX_PROVIDER,
       cwd: options.workspace.root,
-      permissionMode: 'bypassPermissions',
-      sandboxMode: 'workspace-write',
       codexPath: SALAMBO_CODEX_PATH || undefined,
-      systemPrompt,
     };
 
-    if (options.isResuming && options.sdkSessionId) {
-      sessionOptions.resume = options.sdkSessionId;
-    }
-
-    sdkSession = createSession(sessionOptions);
+    sdkSession = createSession(
+      applyTemplateSessionPolicy(sessionOptions, {
+        context: options.context,
+        resumeSessionId: options.isResuming ? options.sdkSessionId : undefined,
+      }),
+    );
 
     if (abortSignal.aborted) {
       throw new Error('Session aborted before prompt dispatch');
@@ -249,14 +208,7 @@ export async function runAgentSession(options: RunSessionOptions) {
     });
   } catch (error) {
     const aborted = abortSignal.aborted;
-    const sessionDuration = Date.now() - sessionStartTime;
-
-    console.error(`[${new Date().toISOString()}] 💥 ERREUR SESSION ${options.sessionId}:`);
-    console.error(`  - Type: ${aborted ? 'ANNULÉE' : 'ERREUR'}`);
-    console.error(`  - Durée: ${sessionDuration}ms`);
-    console.error(`  - Messages traités: ${messageCount}`);
-    console.error(`  - SDK Session ID: ${sdkSessionId || 'non capturé'}`);
-    console.error(`  - Erreur:`, error);
+    console.error(`[${new Date().toISOString()}] Session failed for ${options.sessionId}`, error);
 
     try {
       await appendJsonEvent(stream, {
@@ -267,7 +219,7 @@ export async function runAgentSession(options: RunSessionOptions) {
         timestamp: timestamp(),
       });
     } catch (streamError) {
-      console.error(`[${new Date().toISOString()}] 💥 ÉCHEC ENVOI ÉVÉNEMENT D'ERREUR:`, streamError);
+      console.error(`[${new Date().toISOString()}] Failed to publish session error`, streamError);
     }
   } finally {
     abortSignal.removeEventListener('abort', abortListener);
@@ -282,10 +234,8 @@ export async function runAgentSession(options: RunSessionOptions) {
 
     clearActiveSession();
     const sessionDuration = Date.now() - sessionStartTime;
-    console.log(`[${new Date().toISOString()}] 🧹 Nettoyage session ${options.sessionId} terminé`);
-    console.log(`  - Durée totale: ${sessionDuration}ms`);
-    console.log(`  - Messages traités: ${messageCount}`);
-    console.log(`  - SDK Session ID: ${sdkSessionId || 'non capturé'}`);
-    console.log(`=== FIN SESSION ${options.sessionId} ===`);
+    console.log(
+      `[${new Date().toISOString()}] Session ${options.sessionId} finished in ${sessionDuration}ms with ${messageCount} streamed messages`,
+    );
   }
 }

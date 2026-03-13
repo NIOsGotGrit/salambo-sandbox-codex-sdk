@@ -1,21 +1,6 @@
 # Use Node.js because salambo-codex-agent-sdk targets Node >= 20
 FROM node:20-slim
 
-# Install essential development tools
-RUN apt-get update && apt-get install -y \
-    git \
-    python3 \
-    python3-venv \
-    python3-pip \
-    curl \
-    vim \
-    && rm -rf /var/lib/apt/lists/*
-
-# Create workspace directory and set permissions
-RUN mkdir -p /workspace && \
-    chown -R node:node /workspace
-
-# Set working directory
 WORKDIR /app
 
 # Copy package files
@@ -23,6 +8,22 @@ COPY package*.json ./
 
 # Install dependencies
 RUN npm install
+
+# Install sandbox programs from editable template files
+COPY docker/apt-packages.txt /tmp/apt-packages.txt
+COPY docker/npm-tools.txt /tmp/npm-tools.txt
+COPY docker/bootstrap.sh /tmp/docker-bootstrap.sh
+RUN apt-get update && \
+    grep -Ev '^\s*(#|$)' /tmp/apt-packages.txt | xargs -r apt-get install -y && \
+    rm -rf /var/lib/apt/lists/*
+RUN if grep -Eq '\S' /tmp/npm-tools.txt; then \
+      grep -Ev '^\s*(#|$)' /tmp/npm-tools.txt | xargs -r npm install -g; \
+    fi
+RUN sed -i 's/\r$//' /tmp/docker-bootstrap.sh && chmod +x /tmp/docker-bootstrap.sh && /tmp/docker-bootstrap.sh
+
+# Create workspace directory and set permissions
+RUN mkdir -p /workspace && \
+    chown -R node:node /workspace
 
 # Create isolated Python environment (PEP 668 compliant)
 RUN python3 -m venv /opt/pyenv
@@ -35,6 +36,7 @@ RUN pip install --no-cache-dir -r /app/requirements.txt
 # Copy source code
 COPY src ./src
 COPY tsconfig.json ./
+COPY .codex-home ./.codex-home
 
 # Copy initial workspace files (before switching to node user)
 COPY --chown=node:node initial-workspace/ /workspace/

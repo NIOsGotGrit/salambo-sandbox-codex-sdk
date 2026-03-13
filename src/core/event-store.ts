@@ -4,7 +4,7 @@ import {
   S2_ACCESS_TOKEN,
   S2_BASIN,
   S2_ENABLED,
-} from '../config';
+} from '../config/env';
 
 type JsonEventPayload = Record<string, unknown>;
 
@@ -24,6 +24,7 @@ function getS2Basin() {
   if (!S2_ACCESS_TOKEN || !S2_BASIN) {
     throw new Error('S2_ACCESS_TOKEN and S2_BASIN must be configured');
   }
+
   const s2Client = new S2({ accessToken: S2_ACCESS_TOKEN });
   return s2Client.basin(S2_BASIN);
 }
@@ -123,7 +124,7 @@ export async function sendAgentMessageToStream(params: {
   message: unknown;
   timestamp: string;
 }) {
-  const sanitizedMessage = sanitizePayload(params.message) as unknown;
+  const sanitizedMessage = sanitizePayload(params.message);
   const messageType = isAgentSdkMessage(sanitizedMessage) ? sanitizedMessage.type : 'unknown';
 
   await appendJsonEvent(params.stream, {
@@ -148,7 +149,7 @@ export async function appendJsonEvent(
   if (stream.kind === 'local') {
     if (retryCount === 0) {
       console.log(
-        `[${new Date().toISOString()}] ✅ LOCAL - Event ${payload.type} stored for session ${stream.sessionId}`,
+        `[${new Date().toISOString()}] LOCAL - Event ${payload.type} stored for session ${stream.sessionId}`,
       );
     }
     return;
@@ -166,15 +167,19 @@ export async function appendJsonEvent(
     });
 
     if (retryCount > 0) {
-      console.log(`[${new Date().toISOString()}] 🔄 S2 - Retry #${retryCount} pour événement ${payload.type}`);
+      console.log(
+        `[${new Date().toISOString()}] S2 - Retry #${retryCount} for event ${payload.type}`,
+      );
     }
 
     await stream.stream.append(record);
 
     if (retryCount === 0) {
-      console.log(`[${new Date().toISOString()}] ✅ S2 - Événement ${payload.type} envoyé avec succès`);
+      console.log(`[${new Date().toISOString()}] S2 - Event ${payload.type} sent`);
     } else {
-      console.log(`[${new Date().toISOString()}] ✅ S2 - Événement ${payload.type} envoyé après ${retryCount} retry(s)`);
+      console.log(
+        `[${new Date().toISOString()}] S2 - Event ${payload.type} sent after ${retryCount} retry(s)`,
+      );
     }
   } catch (error: any) {
     const isNetworkError =
@@ -184,13 +189,13 @@ export async function appendJsonEvent(
 
     if (isNetworkError && retryCount < maxRetries) {
       console.warn(
-        `[${new Date().toISOString()}] ⚠️ S2 - Erreur réseau, retry ${retryCount + 1}/${maxRetries} dans ${retryDelay}ms...`,
+        `[${new Date().toISOString()}] S2 - Network error, retry ${retryCount + 1}/${maxRetries} in ${retryDelay}ms`,
       );
       await new Promise((resolve) => setTimeout(resolve, retryDelay));
       return appendJsonEvent(stream, payload, retryCount + 1);
     }
 
-    console.error(`[${new Date().toISOString()}] 💥 S2 - ERREUR lors de l'envoi événement ${payload.type}:`, error);
+    console.error(`[${new Date().toISOString()}] S2 - Failed to send event ${payload.type}`, error);
     throw error;
   }
 }

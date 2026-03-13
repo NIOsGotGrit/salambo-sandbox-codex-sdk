@@ -1,25 +1,20 @@
-import chokidar, { FSWatcher } from 'chokidar';
+import chokidar, { type FSWatcher } from 'chokidar';
 import path from 'path';
 import { promises as fs } from 'fs';
-import { FILE_WATCH_STABILITY_MS, GATEWAY_BASE_URL } from '../config';
-import type { WorkspacePaths } from '../workspace';
+import { FILE_WATCH_STABILITY_MS, GATEWAY_BASE_URL } from '../config/env';
+import type { WorkspacePaths } from './workspace';
 import { getActiveSession } from './session-state';
 
 let fileWatcher: FSWatcher | null = null;
 
 export async function ensureFileWatcher(workspace: WorkspacePaths) {
-  if (!GATEWAY_BASE_URL) {
+  if (!GATEWAY_BASE_URL || fileWatcher) {
     return;
   }
 
-  if (fileWatcher) {
-    return;
-  }
+  await fs.mkdir(workspace.outputsDir, { recursive: true });
 
-  const outputsDir = workspace.outputsDir;
-  await fs.mkdir(outputsDir, { recursive: true });
-
-  const watcher = chokidar.watch(outputsDir, {
+  const watcher = chokidar.watch(workspace.outputsDir, {
     ignoreInitial: true,
     depth: 10,
     awaitWriteFinish: {
@@ -29,15 +24,15 @@ export async function ensureFileWatcher(workspace: WorkspacePaths) {
   });
 
   watcher.on('add', (targetPath) => {
-    void handleFileUpload(outputsDir, targetPath, 'add');
+    void handleFileUpload(workspace.outputsDir, targetPath, 'add');
   });
 
   watcher.on('change', (targetPath) => {
-    void handleFileUpload(outputsDir, targetPath, 'change');
+    void handleFileUpload(workspace.outputsDir, targetPath, 'change');
   });
 
   watcher.on('unlink', (targetPath) => {
-    void handleFileDelete(outputsDir, targetPath);
+    void handleFileDelete(workspace.outputsDir, targetPath);
   });
 
   watcher.on('error', (error) => {
@@ -45,7 +40,7 @@ export async function ensureFileWatcher(workspace: WorkspacePaths) {
   });
 
   fileWatcher = watcher;
-  console.log(`[${new Date().toISOString()}] 📁 File watcher started`);
+  console.log(`[${new Date().toISOString()}] File watcher started`);
 }
 
 export async function stopFileWatcher() {
@@ -58,6 +53,7 @@ export async function stopFileWatcher() {
   } catch (error) {
     console.warn(`[${new Date().toISOString()}] Failed to close file watcher`, error);
   }
+
   fileWatcher = null;
 }
 
@@ -77,12 +73,8 @@ async function handleFileUpload(
   event: 'add' | 'change',
 ) {
   const displayPath = buildDisplayPath(outputsDir, targetPath);
-  if (!displayPath) {
-    return;
-  }
-
   const agentToken = getActiveSession()?.agentToken;
-  if (!agentToken) {
+  if (!displayPath || !agentToken) {
     return;
   }
 
@@ -104,12 +96,8 @@ async function handleFileUpload(
 
 async function handleFileDelete(outputsDir: string, targetPath: string) {
   const displayPath = buildDisplayPath(outputsDir, targetPath);
-  if (!displayPath) {
-    return;
-  }
-
   const agentToken = getActiveSession()?.agentToken;
-  if (!agentToken) {
+  if (!displayPath || !agentToken) {
     return;
   }
 

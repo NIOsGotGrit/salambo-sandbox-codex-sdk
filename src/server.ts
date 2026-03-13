@@ -8,7 +8,7 @@ import {
   SALAMBO_CODEX_PATH,
   WORKSPACE_DIR,
   logStartupWarnings,
-} from './config';
+} from './config/env';
 import { installFileLogger } from './logging/file-logger';
 import { createAgentRouter } from './routes/agent';
 import { createWorkspaceRouter } from './routes/workspace';
@@ -43,6 +43,14 @@ app.listen(PORT, () => {
   if (OPENAI_BASE_URL) {
     console.log(`OpenAI Base URL: ${OPENAI_BASE_URL}`);
   }
+  console.log('Customization entrypoints:');
+  console.log('  src/template/instructions.ts');
+  console.log('  src/template/session-policy.ts');
+  console.log('  src/template/mcp.ts');
+  console.log('  src/template/hooks.ts');
+  console.log('  .codex-home/config.toml');
+  console.log('  initial-workspace/');
+  console.log('  docker/');
   console.log('\nEndpoints:');
   console.log('  GET  /health - Health check');
   console.log('  POST /agent/query - Send task to agent');
