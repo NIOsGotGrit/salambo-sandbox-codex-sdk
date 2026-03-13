@@ -48,6 +48,8 @@ curl http://localhost:3000/agent/events/local-test-1
 
 If `S2_ACCESS_TOKEN` and `S2_BASIN` are not set, the server now falls back to a built-in local event store for testing.
 
+The sandbox also defaults `CODEX_HOME` to [`.codex-home/config.toml`](/C:/Users/nicol/WebstormProjects/salambo-sandbox/salambo-sandbox-codex-sdk/.codex-home/config.toml), so project-local Codex settings are used without mutating your global `~/.codex/config.toml`. On first run it seeds `auth.json` from your user Codex home if needed, which keeps ChatGPT/Codex login-based local testing working.
+
 ## Environment Variables
 
 ### Required
@@ -71,6 +73,7 @@ If `S2_ACCESS_TOKEN` and `S2_BASIN` are not set, the server now falls back to a 
 | `CODEX_MODEL` | `gpt-5.2-codex` | Codex model to use |
 | `CODEX_PROVIDER` | `openai` | Provider passed to the SDK |
 | `SALAMBO_CODEX_PATH` | unset | Explicit path to `codex` or `codex-app-server` |
+| `CODEX_HOME` | `./.codex-home` | Codex home used by the sandbox runtime |
 | `OPENAI_BASE_URL` | unset | Optional provider-specific base URL |
 | `GATEWAY_BASE_URL` | unset | Optional file-sync gateway |
 | `S2_STREAM_PREFIX` | `agent-session` | Stream naming prefix |

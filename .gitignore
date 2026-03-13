@@ -6,6 +6,8 @@ dist/
 .DS_Store
 coverage/
 .nyc_output/
+.codex-home/*
+!.codex-home/config.toml
 
 # IDE
 .idea/

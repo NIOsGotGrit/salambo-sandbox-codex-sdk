@@ -1,9 +1,40 @@
+import fs from 'fs';
+import os from 'os';
+import path from 'path';
 import dotenv from 'dotenv';
 
 dotenv.config();
 
+function resolveDefaultUserCodexHome() {
+  return path.join(os.homedir(), '.codex');
+}
+
+function initializeCodexHome() {
+  const projectCodexHome = path.resolve(process.cwd(), '.codex-home');
+  const configuredCodexHome = process.env.CODEX_HOME?.trim() || projectCodexHome;
+  const userCodexHome = resolveDefaultUserCodexHome();
+
+  process.env.CODEX_HOME = configuredCodexHome;
+  fs.mkdirSync(configuredCodexHome, { recursive: true });
+
+  const localAuthPath = path.join(configuredCodexHome, 'auth.json');
+  const userAuthPath = path.join(userCodexHome, 'auth.json');
+
+  if (
+    configuredCodexHome !== userCodexHome &&
+    !fs.existsSync(localAuthPath) &&
+    fs.existsSync(userAuthPath)
+  ) {
+    fs.copyFileSync(userAuthPath, localAuthPath);
+    console.log(`[codex] Seeded local auth into ${configuredCodexHome}`);
+  }
+
+  return configuredCodexHome;
+}
+
 export const PORT = process.env.PORT || '3000';
 export const WORKSPACE_DIR = process.env.WORKSPACE_DIR || '/workspace';
+export const CODEX_HOME = initializeCodexHome();
 
 export const SANDBOX_FILE_LOGGING = process.env.SANDBOX_FILE_LOGGING !== 'false';
 export const SANDBOX_LOG_DIR = process.env.SANDBOX_LOG_DIR || '/tmp/sandbox-logs';
@@ -41,4 +72,6 @@ export function logStartupWarnings() {
       '[events] S2 is not configured. Falling back to the built-in local event store for testing.',
     );
   }
+
+  console.log(`[codex] Using CODEX_HOME: ${CODEX_HOME}`);
 }
