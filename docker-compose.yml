@@ -1,0 +1,55 @@
+version: '3.8'
+
+services:
+  agent-sandbox:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: salambo-sandbox-codex-sdk
+    ports:
+      - "3000:3000"  # API server
+      - "8001:8000"  # Python HTTP server or custom apps
+      - "8081:8080"  # Alternative web server port
+      - "9002:9000"  # Flask/Express apps
+    environment:
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
+      - OPENAI_BASE_URL=${OPENAI_BASE_URL}
+      - PORT=3000
+      - WORKSPACE_DIR=/workspace
+      - GATEWAY_BASE_URL=${GATEWAY_BASE_URL}
+      - CODEX_MODEL=${CODEX_MODEL:-gpt-5.2-codex}
+      - CODEX_PROVIDER=${CODEX_PROVIDER:-openai}
+      - SALAMBO_CODEX_PATH=${SALAMBO_CODEX_PATH}
+      - NODE_ENV=production
+      - S2_ACCESS_TOKEN=${S2_ACCESS_TOKEN}
+      - S2_BASIN=${S2_BASIN}
+      - S2_STREAM_PREFIX=${S2_STREAM_PREFIX:-agent-session}
+      - PATH=/app/node_modules/.bin:/usr/local/bin:/usr/bin:/bin
+    volumes:
+      # Mount workspace directory (optional - for persistent data)
+      - workspace-data:/workspace
+      # Mount for development (comment out in production)
+      # - ./src:/app/src
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3000/health"]
+      interval: 30s
+      timeout: 3s
+      retries: 3
+      start_period: 5s
+    # Security options
+    security_opt:
+      - no-new-privileges:true
+    # Resource limits
+    deploy:
+      resources:
+        limits:
+          cpus: '2'
+          memory: 2G
+        reservations:
+          cpus: '0.5'
+          memory: 512M
+
+volumes:
+  workspace-data:
+    driver: local
