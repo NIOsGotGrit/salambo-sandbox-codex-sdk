@@ -1,6 +1,6 @@
 {
   "name": "salambo-sandbox-codex-sdk",
-  "version": "1.2.0",
+  "version": "1.0.0",
   "description": "Dockerized sandbox for salambo-codex-agent-sdk with HTTP API",
   "type": "module",
   "main": "src/server.ts",

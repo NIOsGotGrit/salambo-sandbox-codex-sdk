@@ -132,8 +132,8 @@ Example query:
 ## Docker
 
 ```bash
-docker build --provenance=false --sbom=false -t ghcr.io/YOUR_USERNAME/my-sandbox:v1.2.0 .
-docker push ghcr.io/YOUR_USERNAME/my-sandbox:v1.2.0
+docker build --provenance=false --sbom=false -t ghcr.io/your-username/my-sandbox:v1.0.0 .
+docker push ghcr.io/your-username/my-sandbox:v1.0.0
 ```
 
 Customize container tooling through:
@@ -153,7 +153,7 @@ npm run image:push
 npm run image:release
 ```
 
-`image:release` runs `npm run typecheck`, builds the image using the current `package.json` version as the default tag, and then pushes it. Override tags with `-- --tag 1.2.3` and add `-- --latest` if you also want to tag and push `latest`.
+`image:release` runs `npm run typecheck`, builds the image using the current `package.json` version as the default tag, and then pushes it. Override tags with `-- --tag 1.0.1` and add `-- --latest` if you also want to tag and push `latest`.
 
 ## Notes
 

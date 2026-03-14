@@ -46,16 +46,34 @@ function runCommand(command, args, options = {}) {
   const result = spawnSync(command, args, {
     stdio: 'inherit',
     cwd: PROJECT_ROOT,
-    shell: false,
+    shell: options.shell ?? false,
   });
+
+  if (result.error) {
+    console.error(`[image] Failed to run ${printable}`);
+    console.error(result.error.message);
+    process.exit(1);
+  }
 
   if (result.status !== 0) {
     process.exit(result.status ?? 1);
   }
 }
 
-function resolveNpmCommand() {
-  return process.platform === 'win32' ? 'npm.cmd' : 'npm';
+function resolveNpmRunArgs(...npmArgs) {
+  if (process.platform === 'win32') {
+    return {
+      command: process.env.ComSpec || 'cmd.exe',
+      args: ['/d', '/s', '/c', 'npm', ...npmArgs],
+      shell: false,
+    };
+  }
+
+  return {
+    command: 'npm',
+    args: npmArgs,
+    shell: false,
+  };
 }
 
 function buildContextTag(tag) {
@@ -67,9 +85,15 @@ function assertRepositoryConfigured(command) {
     throw new Error('sandbox/image.config.mjs must define a repository value');
   }
 
+  if (imageConfig.repository !== imageConfig.repository.toLowerCase()) {
+    throw new Error(
+      'sandbox/image.config.mjs repository must be lowercase for Docker registries like GHCR',
+    );
+  }
+
   if (
     (command === 'push' || command === 'release') &&
-    imageConfig.repository.includes('YOUR_USERNAME')
+    imageConfig.repository.includes('your-username')
   ) {
     throw new Error(
       'Set sandbox/image.config.mjs repository to your real image repository before pushing',
@@ -146,7 +170,8 @@ function main() {
   }
 
   if (command === 'release' && !hasFlag(restArgs, '--no-typecheck')) {
-    runCommand(resolveNpmCommand(), ['run', 'typecheck'], { dryRun });
+    const npmRun = resolveNpmRunArgs('run', 'typecheck');
+    runCommand(npmRun.command, npmRun.args, { dryRun, shell: npmRun.shell });
   }
 
   if (command === 'build' || command === 'release') {
