@@ -8,6 +8,7 @@ COPY package*.json ./
 
 # Install dependencies
 RUN npm install
+RUN find /app/node_modules -path '*/salambo-codex-bin-*/bin/*' -type f -exec chmod 755 {} \;
 
 # Install sandbox programs from editable template files
 COPY sandbox/docker/apt-packages.txt /tmp/apt-packages.txt

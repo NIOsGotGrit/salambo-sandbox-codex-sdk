@@ -153,7 +153,7 @@ npm run image:push
 npm run image:release
 ```
 
-`image:release` runs `npm run typecheck`, builds the image using the current `package.json` version as the default tag, and then pushes it. Override tags with `-- --tag 1.0.1` and add `-- --latest` if you also want to tag and push `latest`.
+`image:release` runs `npm run typecheck`, builds the image using the current `package.json` version as the default tag, and then pushes it. Override tags with `-- --tag 1.0.2` and add `-- --latest` if you also want to tag and push `latest`.
 
 ## Notes
 
