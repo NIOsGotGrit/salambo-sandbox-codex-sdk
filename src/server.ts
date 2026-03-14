@@ -44,13 +44,11 @@ app.listen(PORT, () => {
     console.log(`OpenAI Base URL: ${OPENAI_BASE_URL}`);
   }
   console.log('Customization entrypoints:');
-  console.log('  src/template/instructions.ts');
-  console.log('  src/template/session-policy.ts');
-  console.log('  src/template/mcp.ts');
-  console.log('  src/template/hooks.ts');
-  console.log('  .codex-home/config.toml');
-  console.log('  initial-workspace/');
-  console.log('  docker/');
+  console.log('  sandbox/config.ts');
+  console.log('  .env');
+  console.log('  sandbox/codex-home/config.toml');
+  console.log('  sandbox/initial-workspace/');
+  console.log('  sandbox/docker/');
   console.log('\nEndpoints:');
   console.log('  GET  /health - Health check');
   console.log('  POST /agent/query - Send task to agent');

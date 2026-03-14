@@ -10,9 +10,9 @@ COPY package*.json ./
 RUN npm install
 
 # Install sandbox programs from editable template files
-COPY docker/apt-packages.txt /tmp/apt-packages.txt
-COPY docker/npm-tools.txt /tmp/npm-tools.txt
-COPY docker/bootstrap.sh /tmp/docker-bootstrap.sh
+COPY sandbox/docker/apt-packages.txt /tmp/apt-packages.txt
+COPY sandbox/docker/npm-tools.txt /tmp/npm-tools.txt
+COPY sandbox/docker/bootstrap.sh /tmp/docker-bootstrap.sh
 RUN apt-get update && \
     grep -Ev '^\s*(#|$)' /tmp/apt-packages.txt | xargs -r apt-get install -y && \
     rm -rf /var/lib/apt/lists/*
@@ -36,10 +36,10 @@ RUN pip install --no-cache-dir -r /app/requirements.txt
 # Copy source code
 COPY src ./src
 COPY tsconfig.json ./
-COPY .codex-home ./.codex-home
+COPY sandbox ./sandbox
 
 # Copy initial workspace files (before switching to node user)
-COPY --chown=node:node initial-workspace/ /workspace/
+COPY --chown=node:node sandbox/initial-workspace/ /workspace/
 
 # Copy startup script, fix line endings, and make it executable
 COPY start.sh /app/start.sh

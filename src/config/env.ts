@@ -1,8 +1,11 @@
 import dotenv from 'dotenv';
 import { initializeCodexHome } from './codex-home';
 import { DEFAULT_WORKSPACE_DIR } from './paths';
+import { getSandboxConfig } from '../platform/load-sandbox-config';
 
 dotenv.config();
+
+const sandboxConfig = getSandboxConfig();
 
 export const PORT = process.env.PORT || '3000';
 export const WORKSPACE_DIR = process.env.WORKSPACE_DIR || DEFAULT_WORKSPACE_DIR;
@@ -16,9 +19,9 @@ export const GATEWAY_BASE_URL = process.env.GATEWAY_BASE_URL;
 export const OPENAI_API_KEY = process.env.OPENAI_API_KEY;
 export const OPENAI_BASE_URL = process.env.OPENAI_BASE_URL;
 
-export const CODEX_MODEL = process.env.CODEX_MODEL || 'gpt-5.2-codex';
-export const CODEX_PROVIDER = process.env.CODEX_PROVIDER || 'openai';
-export const SALAMBO_CODEX_PATH = process.env.SALAMBO_CODEX_PATH;
+export const CODEX_MODEL = process.env.CODEX_MODEL || sandboxConfig.runtime.model;
+export const CODEX_PROVIDER = process.env.CODEX_PROVIDER || sandboxConfig.runtime.provider;
+export const SALAMBO_CODEX_PATH = process.env.SALAMBO_CODEX_PATH || sandboxConfig.runtime.codexPath;
 
 export const S2_ACCESS_TOKEN = process.env.S2_ACCESS_TOKEN;
 export const S2_BASIN = process.env.S2_BASIN;

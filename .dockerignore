@@ -6,9 +6,11 @@ dist
 .git
 .gitignore
 .DS_Store
-*.md
 .vscode
 .idea
 coverage
 .nyc_output
 *.log
+.codex-home
+sandbox/codex-home/*
+!sandbox/codex-home/config.toml

@@ -18,7 +18,10 @@ import {
   type EventSink,
 } from './event-store';
 import { clearActiveSession } from './session-state';
-import { applyTemplateSessionPolicy } from '../template/session-policy';
+import {
+  getSandboxConfig,
+  resolveSandboxSystemPrompt,
+} from '../platform/load-sandbox-config';
 
 export type RunSessionOptions = {
   sessionId: string;
@@ -121,19 +124,24 @@ export async function runAgentSession(options: RunSessionOptions) {
   }
 
   try {
+    const sandboxConfig = getSandboxConfig();
     const sessionOptions: SessionOptions = {
       model: CODEX_MODEL,
       provider: CODEX_PROVIDER,
       cwd: options.workspace.root,
       codexPath: SALAMBO_CODEX_PATH || undefined,
+      permissionMode: sandboxConfig.agent.permissionMode,
+      sandboxMode: sandboxConfig.agent.sandboxMode,
+      systemPrompt: resolveSandboxSystemPrompt(options.context),
+      hooks: sandboxConfig.hooks,
+      mcpServers: sandboxConfig.mcp,
     };
 
-    sdkSession = createSession(
-      applyTemplateSessionPolicy(sessionOptions, {
-        context: options.context,
-        resumeSessionId: options.isResuming ? options.sdkSessionId : undefined,
-      }),
-    );
+    if (options.isResuming ? options.sdkSessionId : undefined) {
+      sessionOptions.resume = options.sdkSessionId;
+    }
+
+    sdkSession = createSession(sessionOptions);
 
     if (abortSignal.aborted) {
       throw new Error('Session aborted before prompt dispatch');

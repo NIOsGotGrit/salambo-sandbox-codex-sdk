@@ -6,8 +6,8 @@ Dockerized sandbox template for `salambo-codex-agent-sdk` with the same HTTP API
 
 This repo is split into two layers:
 
-- fixed platform layer: `src/routes` and `src/core`
-- customizable template layer: `src/template`, `.codex-home`, `initial-workspace`, and `docker`
+- fixed platform layer: `src/routes`, `src/core`, and `src/platform`
+- customizable surface: `sandbox/`, `.env`, and Docker/runtime files at the root
 
 The goal is to make the AI-engineer customization points obvious without changing the backend contract.
 
@@ -22,25 +22,23 @@ The goal is to make the AI-engineer customization points obvious without changin
 | `src/core/agent-runner.ts` | Session lifecycle maps directly to backend events |
 | `src/core/event-store.ts` | S2 and local event payloads must remain compatible |
 
-See [event-contract.md](/C:/Users/nicol/WebstormProjects/salambo-sandbox/salambo-sandbox-codex-sdk/docs/event-contract.md) for the fixed event surface.
+See [event-contract.md](/C:/Users/nicol/WebstormProjects/salambo-sandbox/salambo-sandbox-codex-sdk/sandbox/docs/event-contract.md) for the fixed event surface.
 
 ## Customize First
 
 Edit these first when turning the template into your own sandbox:
 
-- [session-policy.ts](/C:/Users/nicol/WebstormProjects/salambo-sandbox/salambo-sandbox-codex-sdk/src/template/session-policy.ts)
-- [instructions.ts](/C:/Users/nicol/WebstormProjects/salambo-sandbox/salambo-sandbox-codex-sdk/src/template/instructions.ts)
-- [mcp.ts](/C:/Users/nicol/WebstormProjects/salambo-sandbox/salambo-sandbox-codex-sdk/src/template/mcp.ts)
-- [hooks.ts](/C:/Users/nicol/WebstormProjects/salambo-sandbox/salambo-sandbox-codex-sdk/src/template/hooks.ts)
-- [config.toml](/C:/Users/nicol/WebstormProjects/salambo-sandbox/salambo-sandbox-codex-sdk/.codex-home/config.toml)
-- [initial-workspace](/C:/Users/nicol/WebstormProjects/salambo-sandbox/salambo-sandbox-codex-sdk/initial-workspace)
-- [docker](/C:/Users/nicol/WebstormProjects/salambo-sandbox/salambo-sandbox-codex-sdk/docker)
+- [config.ts](/C:/Users/nicol/WebstormProjects/salambo-sandbox/salambo-sandbox-codex-sdk/sandbox/config.ts)
+- [.env.example](/C:/Users/nicol/WebstormProjects/salambo-sandbox/salambo-sandbox-codex-sdk/.env.example)
+- [config.toml](/C:/Users/nicol/WebstormProjects/salambo-sandbox/salambo-sandbox-codex-sdk/sandbox/codex-home/config.toml)
+- [initial-workspace](/C:/Users/nicol/WebstormProjects/salambo-sandbox/salambo-sandbox-codex-sdk/sandbox/initial-workspace)
+- [docker](/C:/Users/nicol/WebstormProjects/salambo-sandbox/salambo-sandbox-codex-sdk/sandbox/docker)
 
 Guides:
 
-- [customize-sdk.md](/C:/Users/nicol/WebstormProjects/salambo-sandbox/salambo-sandbox-codex-sdk/docs/customize-sdk.md)
-- [customize-workspace.md](/C:/Users/nicol/WebstormProjects/salambo-sandbox/salambo-sandbox-codex-sdk/docs/customize-workspace.md)
-- [customize-docker.md](/C:/Users/nicol/WebstormProjects/salambo-sandbox/salambo-sandbox-codex-sdk/docs/customize-docker.md)
+- [customize-sdk.md](/C:/Users/nicol/WebstormProjects/salambo-sandbox/salambo-sandbox-codex-sdk/sandbox/docs/customize-sdk.md)
+- [customize-workspace.md](/C:/Users/nicol/WebstormProjects/salambo-sandbox/salambo-sandbox-codex-sdk/sandbox/docs/customize-workspace.md)
+- [customize-docker.md](/C:/Users/nicol/WebstormProjects/salambo-sandbox/salambo-sandbox-codex-sdk/sandbox/docs/customize-docker.md)
 
 ## Local Development
 
@@ -68,13 +66,14 @@ curl http://localhost:3000/agent/events/local-test-1
 
 If `S2_ACCESS_TOKEN` and `S2_BASIN` are not set, the server now falls back to a built-in local event store for testing.
 
-The sandbox also defaults `CODEX_HOME` to [`.codex-home/config.toml`](/C:/Users/nicol/WebstormProjects/salambo-sandbox/salambo-sandbox-codex-sdk/.codex-home/config.toml), so project-local Codex settings are used without mutating your global `~/.codex/config.toml`. On first run it seeds `auth.json` from your user Codex home if needed, which keeps ChatGPT/Codex login-based local testing working.
+The sandbox also defaults `CODEX_HOME` to [`sandbox/codex-home/config.toml`](/C:/Users/nicol/WebstormProjects/salambo-sandbox/salambo-sandbox-codex-sdk/sandbox/codex-home/config.toml), so project-local Codex settings are used without mutating your global `~/.codex/config.toml`. On first run it seeds `auth.json` from your user Codex home if needed, which keeps ChatGPT/Codex login-based local testing working.
 
 Configuration split:
 
+- `sandbox/config.ts` is the main customization file for agent behavior, hooks, MCP, and workspace defaults
 - `.env` owns runtime values like `CODEX_MODEL`, `CODEX_PROVIDER`, and `SALAMBO_CODEX_PATH`
-- `.codex-home/config.toml` owns Codex-native settings such as reasoning configuration
-- `src/template/session-policy.ts` owns session behavior like sandbox mode, permission mode, MCP attachment, and hook attachment
+- `sandbox/codex-home/config.toml` owns Codex-native settings such as reasoning configuration
+- `src/platform/*` is internal platform plumbing and should rarely need edits
 
 ## Environment Variables
 
@@ -99,7 +98,7 @@ Configuration split:
 | `CODEX_MODEL` | `gpt-5.2-codex` | Codex model to use |
 | `CODEX_PROVIDER` | `openai` | Provider passed to the SDK |
 | `SALAMBO_CODEX_PATH` | unset | Explicit path to `codex` or `codex-app-server` |
-| `CODEX_HOME` | `./.codex-home` | Codex home used by the sandbox runtime |
+| `CODEX_HOME` | `./sandbox/codex-home` | Codex home used by the sandbox runtime |
 | `OPENAI_BASE_URL` | unset | Optional provider-specific base URL |
 | `GATEWAY_BASE_URL` | unset | Optional file-sync gateway |
 | `S2_STREAM_PREFIX` | `agent-session` | Stream naming prefix |
@@ -138,9 +137,9 @@ docker push ghcr.io/YOUR_USERNAME/my-sandbox:v1.2.0
 
 Customize container tooling through:
 
-- [apt-packages.txt](/C:/Users/nicol/WebstormProjects/salambo-sandbox/salambo-sandbox-codex-sdk/docker/apt-packages.txt)
-- [npm-tools.txt](/C:/Users/nicol/WebstormProjects/salambo-sandbox/salambo-sandbox-codex-sdk/docker/npm-tools.txt)
-- [bootstrap.sh](/C:/Users/nicol/WebstormProjects/salambo-sandbox/salambo-sandbox-codex-sdk/docker/bootstrap.sh)
+- [apt-packages.txt](/C:/Users/nicol/WebstormProjects/salambo-sandbox/salambo-sandbox-codex-sdk/sandbox/docker/apt-packages.txt)
+- [npm-tools.txt](/C:/Users/nicol/WebstormProjects/salambo-sandbox/salambo-sandbox-codex-sdk/sandbox/docker/npm-tools.txt)
+- [bootstrap.sh](/C:/Users/nicol/WebstormProjects/salambo-sandbox/salambo-sandbox-codex-sdk/sandbox/docker/bootstrap.sh)
 - [Dockerfile](/C:/Users/nicol/WebstormProjects/salambo-sandbox/salambo-sandbox-codex-sdk/Dockerfile)
 
 ## Notes

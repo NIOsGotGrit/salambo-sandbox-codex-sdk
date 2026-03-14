@@ -8,6 +8,8 @@ coverage/
 .nyc_output/
 .codex-home/*
 !.codex-home/config.toml
+sandbox/codex-home/*
+!sandbox/codex-home/config.toml
 
 # IDE
 .idea/

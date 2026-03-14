@@ -1,7 +1,7 @@
 import { promises as fs } from 'fs';
 import path from 'path';
 import { WORKSPACE_DIR } from '../config/env';
-import { TEMPLATE_WORKSPACE_DIRECTORIES } from '../template/workspace-seed';
+import { getSandboxConfig } from '../platform/load-sandbox-config';
 
 const LOG_PREFIX = '[workspace-manager]';
 
@@ -30,8 +30,9 @@ export function getWorkspacePaths(): WorkspacePaths {
 
 export async function setupWorkspace(): Promise<WorkspacePaths> {
   const workspace = getWorkspacePaths();
+  const sandboxConfig = getSandboxConfig();
 
-  for (const directory of TEMPLATE_WORKSPACE_DIRECTORIES) {
+  for (const directory of sandboxConfig.workspace.directories) {
     await fs.mkdir(path.join(WORKSPACE_DIR, directory), { recursive: true });
   }
 
