@@ -29,6 +29,7 @@ See [event-contract.md](/C:/Users/nicol/WebstormProjects/salambo-sandbox/salambo
 Edit these first when turning the template into your own sandbox:
 
 - [config.ts](/C:/Users/nicol/WebstormProjects/salambo-sandbox/salambo-sandbox-codex-sdk/sandbox/config.ts)
+- [image.config.mjs](/C:/Users/nicol/WebstormProjects/salambo-sandbox/salambo-sandbox-codex-sdk/sandbox/image.config.mjs)
 - [.env.example](/C:/Users/nicol/WebstormProjects/salambo-sandbox/salambo-sandbox-codex-sdk/.env.example)
 - [config.toml](/C:/Users/nicol/WebstormProjects/salambo-sandbox/salambo-sandbox-codex-sdk/sandbox/codex-home/config.toml)
 - [initial-workspace](/C:/Users/nicol/WebstormProjects/salambo-sandbox/salambo-sandbox-codex-sdk/sandbox/initial-workspace)
@@ -140,7 +141,19 @@ Customize container tooling through:
 - [apt-packages.txt](/C:/Users/nicol/WebstormProjects/salambo-sandbox/salambo-sandbox-codex-sdk/sandbox/docker/apt-packages.txt)
 - [npm-tools.txt](/C:/Users/nicol/WebstormProjects/salambo-sandbox/salambo-sandbox-codex-sdk/sandbox/docker/npm-tools.txt)
 - [bootstrap.sh](/C:/Users/nicol/WebstormProjects/salambo-sandbox/salambo-sandbox-codex-sdk/sandbox/docker/bootstrap.sh)
+- [image.config.mjs](/C:/Users/nicol/WebstormProjects/salambo-sandbox/salambo-sandbox-codex-sdk/sandbox/image.config.mjs)
 - [Dockerfile](/C:/Users/nicol/WebstormProjects/salambo-sandbox/salambo-sandbox-codex-sdk/Dockerfile)
+
+Image release commands:
+
+```bash
+npm run image:print
+npm run image:build
+npm run image:push
+npm run image:release
+```
+
+`image:release` runs `npm run typecheck`, builds the image using the current `package.json` version as the default tag, and then pushes it. Override tags with `-- --tag 1.2.3` and add `-- --latest` if you also want to tag and push `latest`.
 
 ## Notes
 
