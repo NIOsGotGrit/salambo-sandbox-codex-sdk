@@ -51,6 +51,7 @@ USER node
 
 # Set workspace as default directory for agent operations
 ENV WORKSPACE_DIR=/workspace
+ENV CODEX_HOME=/home/node/.codex-sandbox
 ENV NODE_ENV=production
 
 # Expose API port

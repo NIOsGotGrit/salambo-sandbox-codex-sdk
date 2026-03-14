@@ -67,7 +67,9 @@ curl http://localhost:3000/agent/events/local-test-1
 
 If `S2_ACCESS_TOKEN` and `S2_BASIN` are not set, the server now falls back to a built-in local event store for testing.
 
-The sandbox also defaults `CODEX_HOME` to [`sandbox/codex-home/config.toml`](/C:/Users/nicol/WebstormProjects/salambo-sandbox/salambo-sandbox-codex-sdk/sandbox/codex-home/config.toml), so project-local Codex settings are used without mutating your global `~/.codex/config.toml`. On first run it seeds `auth.json` from your user Codex home if needed, which keeps ChatGPT/Codex login-based local testing working.
+The sandbox defaults `CODEX_HOME` to [`sandbox/codex-home/config.toml`](/C:/Users/nicol/WebstormProjects/salambo-sandbox/salambo-sandbox-codex-sdk/sandbox/codex-home/config.toml) for local development, so project-local Codex settings are used without mutating your global `~/.codex/config.toml`. On first run it seeds `auth.json` from your user Codex home if needed, which keeps ChatGPT/Codex login-based local testing working.
+
+In Docker, startup switches `CODEX_HOME` to `/home/node/.codex-sandbox`, copies the template `config.toml` there on first boot, and writes `auth.json` from `OPENAI_API_KEY` when present so the runtime can authenticate without writing into `/app` or the synced workspace.
 
 Configuration split:
 
@@ -99,7 +101,7 @@ Configuration split:
 | `CODEX_MODEL` | `gpt-5.2-codex` | Codex model to use |
 | `CODEX_PROVIDER` | `openai` | Provider passed to the SDK |
 | `SALAMBO_CODEX_PATH` | unset | Explicit path to `codex` or `codex-app-server` |
-| `CODEX_HOME` | `./sandbox/codex-home` | Codex home used by the sandbox runtime |
+| `CODEX_HOME` | `./sandbox/codex-home` locally, `/home/node/.codex-sandbox` in Docker | Codex home used by the sandbox runtime |
 | `OPENAI_BASE_URL` | unset | Optional provider-specific base URL |
 | `GATEWAY_BASE_URL` | unset | Optional file-sync gateway |
 | `S2_STREAM_PREFIX` | `agent-session` | Stream naming prefix |
@@ -153,7 +155,7 @@ npm run image:push
 npm run image:release
 ```
 
-`image:release` runs `npm run typecheck`, builds the image using the current `package.json` version as the default tag, and then pushes it. Override tags with `-- --tag 1.0.2` and add `-- --latest` if you also want to tag and push `latest`.
+`image:release` runs `npm run typecheck`, builds the image using the current `package.json` version as the default tag, and then pushes it. Override tags with `-- --tag 1.0.3` and add `-- --latest` if you also want to tag and push `latest`.
 
 ## Notes
 
