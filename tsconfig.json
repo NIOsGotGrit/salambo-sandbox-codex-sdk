@@ -15,6 +15,6 @@
     "declaration": true,
     "types": ["node"]
   },
-  "include": ["src/**/*", "sandbox/config.ts", "sandbox/docker.ts"],
+  "include": ["src/**/*", "sandbox/agent.ts", "sandbox/docker.ts"],
   "exclude": ["node_modules", "dist"]
 }

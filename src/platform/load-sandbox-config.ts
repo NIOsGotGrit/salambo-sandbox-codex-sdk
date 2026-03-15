@@ -1,4 +1,4 @@
-import sandboxConfig from '../../sandbox/config';
+import sandboxConfig from '../../sandbox/agent';
 import type { SandboxConfig } from './schema';
 
 let validated = false;
@@ -50,7 +50,7 @@ function validateConfig(config: SandboxConfig) {
   }
 
   if (errors.length > 0) {
-    console.error('\n[sandbox] Invalid sandbox/config.ts:');
+    console.error('\n[sandbox] Invalid sandbox/agent.ts:');
     for (const e of errors) {
       console.error(`  - ${e}`);
     }

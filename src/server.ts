@@ -34,7 +34,7 @@ app.listen(PORT, () => {
   console.log(`  Model:     ${config.model} (${config.provider})`);
   console.log(`  Workspace: ${WORKSPACE_DIR}`);
   console.log(`  Sandbox:   ${config.sandbox}`);
-  console.log(`\nCustomize: sandbox/config.ts`);
+  console.log(`\nCustomize: sandbox/agent.ts`);
   console.log(`\nEndpoints:`);
   console.log(`  GET  /health`);
   console.log(`  POST /agent/query            { taskId, prompt, systemPrompt?, sdkSessionId?, metadata? }`);

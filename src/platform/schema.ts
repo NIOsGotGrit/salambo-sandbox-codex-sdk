@@ -32,6 +32,6 @@ export function resolvePermissionMode(p: SandboxPermissions): string {
   return PERMISSIONS_MAP[p];
 }
 
-export function defineSandbox(config: SandboxConfig): SandboxConfig {
+export function defineAgent(config: SandboxConfig): SandboxConfig {
   return config;
 }

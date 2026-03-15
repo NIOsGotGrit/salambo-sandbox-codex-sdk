@@ -1,6 +1,6 @@
-import { defineSandbox } from '../src/platform/schema';
+import { defineAgent } from '../src/platform/schema';
 
-export default defineSandbox({
+export default defineAgent({
   // ── What model runs inside the sandbox ──
   model: 'gpt-5.2-codex',
   provider: 'openai',

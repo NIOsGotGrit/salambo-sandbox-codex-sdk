@@ -9,7 +9,7 @@
     "start": "node dist/src/server.js",
     "dev": "tsx watch src/server.ts",
     "typecheck": "tsc --noEmit",
-    "sandbox:validate": "tsx -e \"import c from './sandbox/config'; import d from './sandbox/docker'; console.log('sandbox/config.ts OK'); console.log('sandbox/docker.ts OK');\"",
+    "sandbox:validate": "tsx -e \"import c from './sandbox/agent'; import d from './sandbox/docker'; console.log('sandbox/agent.ts OK'); console.log('sandbox/docker.ts OK');\"",
     "docker:build": "docker build -t salambo-sandbox-codex-sdk .",
     "docker:run": "docker run -p 3000:3000 salambo-sandbox-codex-sdk",
     "image:build": "node scripts/docker-image.mjs build",
