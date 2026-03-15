@@ -1,10 +1,13 @@
 import {
   createSession,
-  type PermissionMode,
   type SalamboSession,
-  type SandboxMode as SdkSandboxMode,
   type SessionOptions,
 } from 'salambo-codex-agent-sdk';
+
+// Extend SessionOptions until the SDK ships configProfile natively
+type SandboxSessionOptions = SessionOptions & {
+  configProfile?: string;
+};
 import { S2_STREAM_PREFIX } from '../config/env';
 import type { WorkspacePaths } from './workspace';
 import {
@@ -19,7 +22,6 @@ import {
   getSandboxConfig,
   resolveSystemPrompt,
 } from '../platform/load-sandbox-config';
-import { resolvePermissionMode } from '../platform/schema';
 
 export type RunTaskOptions = {
   taskId: string;
@@ -98,23 +100,18 @@ export async function runAgentTask(options: RunTaskOptions) {
 
   try {
     const config = getSandboxConfig();
-    const sessionOptions: SessionOptions = {
-      model: config.model,
-      provider: config.provider,
+    const sessionOptions: SandboxSessionOptions = {
+      configProfile: config.configProfile,
       cwd: options.workspace.root,
-      codexPath: config.codexPath,
-      permissionMode: resolvePermissionMode(config.permissions) as PermissionMode,
-      sandboxMode: config.sandbox as SdkSandboxMode,
       systemPrompt: resolveSystemPrompt(config, options.systemPrompt),
       hooks: config.hooks,
-      mcpServers: config.mcp,
     };
 
     if (options.isResuming && options.sdkSessionId) {
       sessionOptions.resume = options.sdkSessionId;
     }
 
-    sdkSession = createSession(sessionOptions);
+    sdkSession = createSession(sessionOptions as SessionOptions);
 
     if (abortSignal.aborted) {
       throw new Error('Task aborted before prompt dispatch');

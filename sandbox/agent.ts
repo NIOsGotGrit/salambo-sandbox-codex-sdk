@@ -1,14 +1,10 @@
 import { defineAgent } from '../src/platform/schema';
 
 export default defineAgent({
-  // ── What model runs inside the sandbox ──
-  model: 'gpt-5.2-codex',
-  provider: 'openai',
+  // ── Which TOML profile to activate ──
+  configProfile: 'default',
 
-  // ── How the agent behaves ──
-  permissions: 'bypass',
-  sandbox: 'workspace-write',
-
+  // ── Agent system prompt ──
   instructions: [
     'You are an AI engineer operating inside a file sandbox.',
     'Use /workspace/work for scratch files and intermediate edits.',
@@ -21,9 +17,6 @@ export default defineAgent({
     seed: 'sandbox/initial-workspace',
     dirs: ['work', 'work/files', 'work/templates', 'outputs'],
   },
-
-  // ── MCP tool servers ──
-  mcp: [],
 
   // ── Lifecycle hooks ──
   hooks: {},

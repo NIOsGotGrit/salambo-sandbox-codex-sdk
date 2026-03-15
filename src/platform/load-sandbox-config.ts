@@ -24,17 +24,8 @@ export function resolveSystemPrompt(
 function validateConfig(config: SandboxConfig) {
   const errors: string[] = [];
 
-  if (!config.model || typeof config.model !== 'string') {
-    errors.push('model must be a non-empty string');
-  }
-  if (!config.provider || typeof config.provider !== 'string') {
-    errors.push('provider must be a non-empty string');
-  }
-  if (!['bypass', 'ask', 'deny'].includes(config.permissions)) {
-    errors.push('permissions must be "bypass", "ask", or "deny"');
-  }
-  if (!['workspace-write', 'workspace-read', 'full'].includes(config.sandbox)) {
-    errors.push('sandbox must be "workspace-write", "workspace-read", or "full"');
+  if (!config.configProfile || typeof config.configProfile !== 'string') {
+    errors.push('configProfile must be a non-empty string');
   }
   if (!config.instructions || typeof config.instructions !== 'string') {
     errors.push('instructions must be a non-empty string');
@@ -44,9 +35,6 @@ function validateConfig(config: SandboxConfig) {
   }
   if (!config.workspace?.seed || typeof config.workspace.seed !== 'string') {
     errors.push('workspace.seed must be a non-empty string');
-  }
-  if (!Array.isArray(config.mcp)) {
-    errors.push('mcp must be an array');
   }
 
   if (errors.length > 0) {

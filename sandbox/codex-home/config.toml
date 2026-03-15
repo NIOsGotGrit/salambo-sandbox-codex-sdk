@@ -1,6 +1,25 @@
 #:schema https://developers.openai.com/codex/config-schema.json
 
+# ── Default profile ──
+# Active when configProfile = "default" in sandbox/agent.ts
+[profile.default]
 model = "gpt-5.2-codex"
 model_reasoning_summary = "detailed"
-approval_policy = "on-request"
+approval_policy = "full-auto"
+sandbox_mode = "workspace-write"
+
+# ── Heavy reasoning profile ──
+# Active when configProfile = "heavy-reasoning"
+[profile.heavy-reasoning]
+model = "o3-pro"
+model_reasoning_summary = "detailed"
+approval_policy = "full-auto"
+sandbox_mode = "full"
+
+# ── Fast iteration profile ──
+# Active when configProfile = "fast"
+[profile.fast]
+model = "codex-mini"
+model_reasoning_summary = "concise"
+approval_policy = "full-auto"
 sandbox_mode = "workspace-write"

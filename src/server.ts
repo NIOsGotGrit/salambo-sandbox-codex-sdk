@@ -31,9 +31,8 @@ app.use((err: Error, _req: Request, res: Response, _next: NextFunction) => {
 
 app.listen(PORT, () => {
   console.log(`\nAgent Sandbox API running on port ${PORT}`);
-  console.log(`  Model:     ${config.model} (${config.provider})`);
+  console.log(`  Profile:   ${config.configProfile}`);
   console.log(`  Workspace: ${WORKSPACE_DIR}`);
-  console.log(`  Sandbox:   ${config.sandbox}`);
   console.log(`\nCustomize: sandbox/agent.ts`);
   console.log(`\nEndpoints:`);
   console.log(`  GET  /health`);

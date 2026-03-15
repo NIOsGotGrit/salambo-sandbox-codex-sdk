@@ -21,8 +21,7 @@ export function createAgentRouter() {
     res.json({
       status: 'healthy',
       workspace: WORKSPACE_DIR,
-      model: config.model,
-      provider: config.provider,
+      configProfile: config.configProfile,
       eventBackend: getEventBackend(),
       timestamp: new Date().toISOString(),
     });
@@ -123,8 +122,7 @@ export function createAgentRouter() {
           }
         : null,
       queueLength: getQueueLength(),
-      model: config.model,
-      provider: config.provider,
+      configProfile: config.configProfile,
       eventBackend: getEventBackend(),
       timestamp: new Date().toISOString(),
     });
