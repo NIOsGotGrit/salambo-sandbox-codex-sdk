@@ -1,5 +1,5 @@
 #!/bin/bash
-# Start the API server (foreground) - v1.0.4
+# Start the API server (foreground) - v2.0.0
 
 export PORT=${PORT:-3000}
 export CODEX_HOME=${CODEX_HOME:-/home/node/.codex-sandbox}
@@ -15,4 +15,4 @@ if [ -n "${OPENAI_API_KEY:-}" ] && [ ! -f "$CODEX_HOME/auth.json" ]; then
 fi
 
 echo "Starting Agent API on port $PORT..."
-npm run start
+node dist/src/server.js

@@ -1,19 +1,16 @@
 import express, { type NextFunction, type Request, type Response } from 'express';
 import cors from 'cors';
-import {
-  CODEX_MODEL,
-  CODEX_PROVIDER,
-  OPENAI_BASE_URL,
-  PORT,
-  SALAMBO_CODEX_PATH,
-  WORKSPACE_DIR,
-  logStartupWarnings,
-} from './config/env';
+import { PORT, WORKSPACE_DIR, logStartupWarnings } from './config/env';
 import { installFileLogger } from './logging/file-logger';
 import { createAgentRouter } from './routes/agent';
 import { createWorkspaceRouter } from './routes/workspace';
+import { getSandboxConfig } from './platform/load-sandbox-config';
 
 installFileLogger();
+
+// Validate sandbox config at startup — fail fast
+const config = getSandboxConfig();
+
 logStartupWarnings();
 
 const app = express();
@@ -33,29 +30,18 @@ app.use((err: Error, _req: Request, res: Response, _next: NextFunction) => {
 });
 
 app.listen(PORT, () => {
-  console.log(`Agent Sandbox API running on port ${PORT}`);
-  console.log(`Workspace directory: ${WORKSPACE_DIR}`);
-  console.log(`Codex model: ${CODEX_MODEL}`);
-  console.log(`Codex provider: ${CODEX_PROVIDER}`);
-  if (SALAMBO_CODEX_PATH) {
-    console.log(`Codex binary override: ${SALAMBO_CODEX_PATH}`);
-  }
-  if (OPENAI_BASE_URL) {
-    console.log(`OpenAI Base URL: ${OPENAI_BASE_URL}`);
-  }
-  console.log('Customization entrypoints:');
-  console.log('  sandbox/config.ts');
-  console.log('  .env');
-  console.log('  sandbox/codex-home/config.toml');
-  console.log('  sandbox/initial-workspace/');
-  console.log('  sandbox/docker/');
-  console.log('\nEndpoints:');
-  console.log('  GET  /health - Health check');
-  console.log('  POST /agent/query - Send task to agent');
-  console.log('  POST /agent/interrupt - Interrupt agent execution');
-  console.log('  GET  /agent/status - Get agent status');
-  console.log('  GET  /agent/events/:sessionId - Read local event history');
-  console.log('  POST /workspace/files/sync - Upload base64 files into workspace');
-  console.log('  POST /workspace/files/import - Download files into workspace');
-  console.log('  DELETE /workspace/session/:sessionId - Cleanup session state');
+  console.log(`\nAgent Sandbox API running on port ${PORT}`);
+  console.log(`  Model:     ${config.model} (${config.provider})`);
+  console.log(`  Workspace: ${WORKSPACE_DIR}`);
+  console.log(`  Sandbox:   ${config.sandbox}`);
+  console.log(`\nCustomize: sandbox/config.ts`);
+  console.log(`\nEndpoints:`);
+  console.log(`  GET  /health`);
+  console.log(`  POST /agent/query            { taskId, prompt, systemPrompt?, sdkSessionId?, metadata? }`);
+  console.log(`  POST /agent/interrupt         { taskId }`);
+  console.log(`  GET  /agent/status`);
+  console.log(`  GET  /agent/events/:taskId`);
+  console.log(`  POST /workspace/files/sync`);
+  console.log(`  POST /workspace/files/import`);
+  console.log(`  DELETE /workspace/session/:taskId`);
 });

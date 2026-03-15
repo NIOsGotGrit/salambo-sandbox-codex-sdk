@@ -3,10 +3,7 @@ import path from 'path';
 import { promises as fs } from 'fs';
 import { setupWorkspace } from '../core/workspace';
 import { stopFileWatcher } from '../core/file-sync';
-import {
-  clearActiveSession,
-  getActiveSession,
-} from '../core/session-state';
+import { clearActiveTask, getActiveTask } from '../core/session-state';
 import {
   downloadFileToPath,
   resolveSafeWorkspaceTargetPath,
@@ -15,22 +12,22 @@ import {
 export function createWorkspaceRouter() {
   const router = Router();
 
-  router.delete('/workspace/session/:sessionId', async (req: Request, res: Response) => {
-    const rawSessionId = req.params.sessionId;
-    const sessionId = Array.isArray(rawSessionId) ? rawSessionId[0] : rawSessionId;
-    if (!sessionId) {
-      return res.status(400).json({ error: 'sessionId parameter is required' });
+  router.delete('/workspace/session/:taskId', async (req: Request, res: Response) => {
+    const rawTaskId = req.params.taskId;
+    const taskId = Array.isArray(rawTaskId) ? rawTaskId[0] : rawTaskId;
+    if (!taskId) {
+      return res.status(400).json({ error: 'taskId parameter is required' });
     }
 
-    const activeSession = getActiveSession();
-    if (activeSession && activeSession.sessionId === sessionId) {
-      activeSession.abortController.abort();
-      clearActiveSession();
+    const active = getActiveTask();
+    if (active && active.taskId === taskId) {
+      active.abortController.abort();
+      clearActiveTask();
     }
 
     try {
       await stopFileWatcher();
-      return res.json({ success: true, sessionId });
+      return res.json({ success: true, taskId });
     } catch (error) {
       console.error(`[${new Date().toISOString()}] Cleanup failed`, error);
       return res.status(500).json({ error: 'Failed to cleanup session' });
@@ -48,11 +45,10 @@ export function createWorkspaceRouter() {
       : [];
 
     if (!files.length) {
-      return res.status(400).json({ error: 'files are required' });
+      return res.status(400).json({ error: 'files[] is required' });
     }
-
     if (files.length > 20) {
-      return res.status(400).json({ error: 'Too many files in one request' });
+      return res.status(400).json({ error: 'Max 20 files per request' });
     }
 
     try {
@@ -61,25 +57,25 @@ export function createWorkspaceRouter() {
 
       for (const file of files) {
         if (typeof file.targetPath !== 'string' || typeof file.contentBase64 !== 'string') {
-          return res.status(400).json({ error: 'Invalid file payload' });
+          return res.status(400).json({ error: 'Each file needs targetPath and contentBase64' });
         }
 
-        const safeRelativePath = resolveSafeWorkspaceTargetPath(file.targetPath);
-        const absolutePath = path.join(workspace.root, safeRelativePath);
+        const safePath = resolveSafeWorkspaceTargetPath(file.targetPath);
+        const absolutePath = path.join(workspace.root, safePath);
         const bytes = Buffer.from(file.contentBase64, 'base64');
 
         if (bytes.length > 1024 * 1024 * 100) {
-          return res.status(413).json({ error: 'File exceeds max size 100MB' });
+          return res.status(413).json({ error: 'File exceeds 100MB limit' });
         }
 
         await fs.mkdir(path.dirname(absolutePath), { recursive: true });
         await fs.writeFile(absolutePath, bytes);
-        saved.push(`/workspace/${safeRelativePath}`);
+        saved.push(`/workspace/${safePath}`);
       }
 
       return res.json({ success: true, saved });
     } catch (error) {
-      console.error(`[${new Date().toISOString()}] Input file sync failed`, error);
+      console.error(`[${new Date().toISOString()}] File sync failed`, error);
       return res.status(500).json({ error: 'Failed to sync files' });
     }
   });
@@ -95,11 +91,10 @@ export function createWorkspaceRouter() {
       : [];
 
     if (!files.length) {
-      return res.status(400).json({ error: 'files are required' });
+      return res.status(400).json({ error: 'files[] is required' });
     }
-
     if (files.length > 20) {
-      return res.status(400).json({ error: 'Too many files in one request' });
+      return res.status(400).json({ error: 'Max 20 files per request' });
     }
 
     try {
@@ -108,24 +103,22 @@ export function createWorkspaceRouter() {
 
       for (const file of files) {
         if (typeof file.targetPath !== 'string' || typeof file.sourceUrl !== 'string') {
-          return res.status(400).json({ error: 'Invalid file payload' });
+          return res.status(400).json({ error: 'Each file needs targetPath and sourceUrl' });
         }
-
         if (!file.sourceUrl.startsWith('https://')) {
-          return res.status(400).json({ error: 'sourceUrl must be https' });
+          return res.status(400).json({ error: 'sourceUrl must use https' });
         }
 
-        const safeRelativePath = resolveSafeWorkspaceTargetPath(file.targetPath);
-        const absolutePath = path.join(workspace.root, safeRelativePath);
+        const safePath = resolveSafeWorkspaceTargetPath(file.targetPath);
+        const absolutePath = path.join(workspace.root, safePath);
         await fs.mkdir(path.dirname(absolutePath), { recursive: true });
-
         await downloadFileToPath(file.sourceUrl, absolutePath, 1024 * 1024 * 100);
-        saved.push(`/workspace/${safeRelativePath}`);
+        saved.push(`/workspace/${safePath}`);
       }
 
       return res.json({ success: true, saved });
     } catch (error) {
-      console.error(`[${new Date().toISOString()}] Input file import failed`, error);
+      console.error(`[${new Date().toISOString()}] File import failed`, error);
       return res.status(500).json({ error: 'Failed to import files' });
     }
   });

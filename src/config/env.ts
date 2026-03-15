@@ -1,11 +1,8 @@
 import dotenv from 'dotenv';
 import { initializeCodexHome } from './codex-home';
 import { DEFAULT_WORKSPACE_DIR } from './paths';
-import { getSandboxConfig } from '../platform/load-sandbox-config';
 
 dotenv.config();
-
-const sandboxConfig = getSandboxConfig();
 
 export const PORT = process.env.PORT || '3000';
 export const WORKSPACE_DIR = process.env.WORKSPACE_DIR || DEFAULT_WORKSPACE_DIR;
@@ -17,11 +14,6 @@ export const SANDBOX_LOG_FILE = process.env.SANDBOX_LOG_FILE || 'agent-api.log';
 
 export const GATEWAY_BASE_URL = process.env.GATEWAY_BASE_URL;
 export const OPENAI_API_KEY = process.env.OPENAI_API_KEY;
-export const OPENAI_BASE_URL = process.env.OPENAI_BASE_URL;
-
-export const CODEX_MODEL = process.env.CODEX_MODEL || sandboxConfig.runtime.model;
-export const CODEX_PROVIDER = process.env.CODEX_PROVIDER || sandboxConfig.runtime.provider;
-export const SALAMBO_CODEX_PATH = process.env.SALAMBO_CODEX_PATH || sandboxConfig.runtime.codexPath;
 
 export const S2_ACCESS_TOKEN = process.env.S2_ACCESS_TOKEN;
 export const S2_BASIN = process.env.S2_BASIN;
@@ -33,20 +25,16 @@ export const FILE_WATCH_STABILITY_MS = Number(process.env.FILE_WATCH_STABILITY_M
 
 export function logStartupWarnings() {
   if (!GATEWAY_BASE_URL) {
-    console.warn('[workspace] GATEWAY_BASE_URL is not configured. File sync is disabled.');
+    console.warn('[config] GATEWAY_BASE_URL not set — file sync disabled');
   }
 
-  if (!OPENAI_API_KEY && CODEX_PROVIDER === 'openai') {
-    console.warn(
-      'Warning: OPENAI_API_KEY is not set. Codex may still work if the runtime is already authenticated.',
-    );
+  if (!OPENAI_API_KEY) {
+    console.warn('[config] OPENAI_API_KEY not set — agent may fail if provider requires it');
   }
 
   if (!S2_ENABLED) {
-    console.warn(
-      '[events] S2 is not configured. Falling back to the built-in local event store for testing.',
-    );
+    console.warn('[config] S2 not configured — using local event store');
   }
 
-  console.log(`[codex] Using CODEX_HOME: ${CODEX_HOME}`);
+  console.log(`[config] CODEX_HOME: ${CODEX_HOME}`);
 }

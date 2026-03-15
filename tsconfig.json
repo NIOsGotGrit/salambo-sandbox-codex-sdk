@@ -12,8 +12,9 @@
     "resolveJsonModule": true,
     "moduleResolution": "bundler",
     "sourceMap": true,
+    "declaration": true,
     "types": ["node"]
   },
-  "include": ["src/**/*", "sandbox/config.ts"],
+  "include": ["src/**/*", "sandbox/config.ts", "sandbox/docker.ts"],
   "exclude": ["node_modules", "dist"]
 }

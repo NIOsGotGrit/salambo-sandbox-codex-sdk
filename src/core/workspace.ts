@@ -3,8 +3,6 @@ import path from 'path';
 import { WORKSPACE_DIR } from '../config/env';
 import { getSandboxConfig } from '../platform/load-sandbox-config';
 
-const LOG_PREFIX = '[workspace-manager]';
-
 export type WorkspacePaths = {
   root: string;
   workDir: string;
@@ -12,11 +10,6 @@ export type WorkspacePaths = {
   filesDir: string;
   templatesDir: string;
 };
-
-function log(message: string, extra?: Record<string, unknown>) {
-  const payload = extra ? ` ${JSON.stringify(extra)}` : '';
-  console.log(`${LOG_PREFIX} ${new Date().toISOString()} ${message}${payload}`);
-}
 
 export function getWorkspacePaths(): WorkspacePaths {
   return {
@@ -30,13 +23,12 @@ export function getWorkspacePaths(): WorkspacePaths {
 
 export async function setupWorkspace(): Promise<WorkspacePaths> {
   const workspace = getWorkspacePaths();
-  const sandboxConfig = getSandboxConfig();
+  const config = getSandboxConfig();
 
-  for (const directory of sandboxConfig.workspace.directories) {
-    await fs.mkdir(path.join(WORKSPACE_DIR, directory), { recursive: true });
+  for (const dir of config.workspace.dirs) {
+    await fs.mkdir(path.join(WORKSPACE_DIR, dir), { recursive: true });
   }
 
-  log('Workspace ready', workspace);
-
+  console.log(`[workspace] Ready: ${JSON.stringify(workspace)}`);
   return workspace;
 }

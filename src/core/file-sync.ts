@@ -3,7 +3,7 @@ import path from 'path';
 import { promises as fs } from 'fs';
 import { FILE_WATCH_STABILITY_MS, GATEWAY_BASE_URL } from '../config/env';
 import type { WorkspacePaths } from './workspace';
-import { getActiveSession } from './session-state';
+import { getActiveTask } from './session-state';
 
 let fileWatcher: FSWatcher | null = null;
 
@@ -73,7 +73,7 @@ async function handleFileUpload(
   event: 'add' | 'change',
 ) {
   const displayPath = buildDisplayPath(outputsDir, targetPath);
-  const agentToken = getActiveSession()?.agentToken;
+  const agentToken = getActiveTask()?.agentToken;
   if (!displayPath || !agentToken) {
     return;
   }
@@ -96,7 +96,7 @@ async function handleFileUpload(
 
 async function handleFileDelete(outputsDir: string, targetPath: string) {
   const displayPath = buildDisplayPath(outputsDir, targetPath);
-  const agentToken = getActiveSession()?.agentToken;
+  const agentToken = getActiveTask()?.agentToken;
   if (!displayPath || !agentToken) {
     return;
   }

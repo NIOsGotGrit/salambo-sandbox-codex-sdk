@@ -24,7 +24,6 @@ function getS2Basin() {
   if (!S2_ACCESS_TOKEN || !S2_BASIN) {
     throw new Error('S2_ACCESS_TOKEN and S2_BASIN must be configured');
   }
-
   const s2Client = new S2({ accessToken: S2_ACCESS_TOKEN });
   return s2Client.basin(S2_BASIN);
 }
@@ -32,17 +31,8 @@ function getS2Basin() {
 type S2Stream = ReturnType<ReturnType<typeof getS2Basin>['stream']>;
 
 export type EventSink =
-  | {
-      kind: 's2';
-      sessionId: string;
-      streamName: string;
-      stream: S2Stream;
-    }
-  | {
-      kind: 'local';
-      sessionId: string;
-      streamName: string;
-    };
+  | { kind: 's2'; taskId: string; streamName: string; stream: S2Stream }
+  | { kind: 'local'; taskId: string; streamName: string };
 
 const localEventSessions = new Map<string, LocalEventSession>();
 
@@ -50,23 +40,21 @@ export function getEventBackend(): 's2' | 'local' {
   return S2_ENABLED ? 's2' : 'local';
 }
 
-function getOrCreateLocalEventSession(sessionId: string): LocalEventSession {
-  const existing = localEventSessions.get(sessionId);
-  if (existing) {
-    return existing;
-  }
+function getOrCreateLocal(taskId: string): LocalEventSession {
+  const existing = localEventSessions.get(taskId);
+  if (existing) return existing;
 
   const created: LocalEventSession = {
     events: [],
     nextSequence: 1,
     updatedAt: new Date().toISOString(),
   };
-  localEventSessions.set(sessionId, created);
+  localEventSessions.set(taskId, created);
   return created;
 }
 
-function recordLocalEvent(sessionId: string, streamName: string, payload: JsonEventPayload) {
-  const session = getOrCreateLocalEventSession(sessionId);
+function recordLocalEvent(taskId: string, streamName: string, payload: JsonEventPayload) {
+  const session = getOrCreateLocal(taskId);
   session.events.push({
     sequence: session.nextSequence++,
     streamName,
@@ -79,14 +67,12 @@ function recordLocalEvent(sessionId: string, streamName: string, payload: JsonEv
   }
 }
 
-export function getLocalEvents(sessionId: string, limit: number) {
-  const session = localEventSessions.get(sessionId);
-  if (!session) {
-    return null;
-  }
+export function getLocalEvents(taskId: string, limit: number) {
+  const session = localEventSessions.get(taskId);
+  if (!session) return null;
 
   return {
-    sessionId,
+    taskId,
     eventBackend: getEventBackend(),
     totalEvents: session.events.length,
     returnedEvents: Math.min(limit, session.events.length),
@@ -95,22 +81,12 @@ export function getLocalEvents(sessionId: string, limit: number) {
   };
 }
 
-export function createEventSink(sessionId: string, streamName: string): EventSink {
+export function createEventSink(taskId: string, streamName: string): EventSink {
   if (!S2_ENABLED) {
-    return {
-      kind: 'local',
-      sessionId,
-      streamName,
-    };
+    return { kind: 'local', taskId, streamName };
   }
-
   const basin = getS2Basin();
-  return {
-    kind: 's2',
-    sessionId,
-    streamName,
-    stream: basin.stream(streamName),
-  };
+  return { kind: 's2', taskId, streamName, stream: basin.stream(streamName) };
 }
 
 function isAgentSdkMessage(payload: unknown): payload is { type: string } {
@@ -119,7 +95,7 @@ function isAgentSdkMessage(payload: unknown): payload is { type: string } {
 
 export async function sendAgentMessageToStream(params: {
   stream: EventSink;
-  sessionId: string;
+  taskId: string;
   sdkSessionId?: string;
   message: unknown;
   timestamp: string;
@@ -129,7 +105,7 @@ export async function sendAgentMessageToStream(params: {
 
   await appendJsonEvent(params.stream, {
     type: 'agent_message',
-    sessionId: params.sessionId,
+    taskId: params.taskId,
     sdkSessionId: params.sdkSessionId,
     messageType,
     message: sanitizedMessage,
@@ -142,22 +118,20 @@ export async function appendJsonEvent(
   payload: Record<string, unknown>,
   retryCount = 0,
 ) {
+  // Always record locally first
   if (retryCount === 0) {
-    recordLocalEvent(stream.sessionId, stream.streamName, payload);
+    recordLocalEvent(stream.taskId, stream.streamName, payload);
   }
 
   if (stream.kind === 'local') {
     if (retryCount === 0) {
-      console.log(
-        `[${new Date().toISOString()}] LOCAL - Event ${payload.type} stored for session ${stream.sessionId}`,
-      );
+      console.log(`[${new Date().toISOString()}] LOCAL - ${payload.type} for task ${stream.taskId}`);
     }
     return;
   }
 
   const maxRetries = 5;
-  const baseDelay = 1000;
-  const retryDelay = baseDelay * Math.pow(2, retryCount);
+  const retryDelay = 1000 * Math.pow(2, retryCount);
 
   try {
     const content = JSON.stringify(payload);
@@ -167,20 +141,11 @@ export async function appendJsonEvent(
     });
 
     if (retryCount > 0) {
-      console.log(
-        `[${new Date().toISOString()}] S2 - Retry #${retryCount} for event ${payload.type}`,
-      );
+      console.log(`[${new Date().toISOString()}] S2 - Retry #${retryCount} for ${payload.type}`);
     }
 
     await stream.stream.append(record);
-
-    if (retryCount === 0) {
-      console.log(`[${new Date().toISOString()}] S2 - Event ${payload.type} sent`);
-    } else {
-      console.log(
-        `[${new Date().toISOString()}] S2 - Event ${payload.type} sent after ${retryCount} retry(s)`,
-      );
-    }
+    console.log(`[${new Date().toISOString()}] S2 - ${payload.type} sent${retryCount > 0 ? ` after ${retryCount} retry(s)` : ''}`);
   } catch (error: any) {
     const isNetworkError =
       error?.code === 'UND_ERR_SOCKET' ||
@@ -188,14 +153,12 @@ export async function appendJsonEvent(
       error?.message?.includes('fetch failed');
 
     if (isNetworkError && retryCount < maxRetries) {
-      console.warn(
-        `[${new Date().toISOString()}] S2 - Network error, retry ${retryCount + 1}/${maxRetries} in ${retryDelay}ms`,
-      );
+      console.warn(`[${new Date().toISOString()}] S2 - Network error, retry ${retryCount + 1}/${maxRetries} in ${retryDelay}ms`);
       await new Promise((resolve) => setTimeout(resolve, retryDelay));
       return appendJsonEvent(stream, payload, retryCount + 1);
     }
 
-    console.error(`[${new Date().toISOString()}] S2 - Failed to send event ${payload.type}`, error);
+    console.error(`[${new Date().toISOString()}] S2 - Failed to send ${payload.type}`, error);
     throw error;
   }
 }

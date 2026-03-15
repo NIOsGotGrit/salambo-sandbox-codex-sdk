@@ -1,14 +1,11 @@
 import {
   createSession,
+  type PermissionMode,
   type SalamboSession,
+  type SandboxMode as SdkSandboxMode,
   type SessionOptions,
 } from 'salambo-codex-agent-sdk';
-import {
-  CODEX_MODEL,
-  CODEX_PROVIDER,
-  SALAMBO_CODEX_PATH,
-  S2_STREAM_PREFIX,
-} from '../config/env';
+import { S2_STREAM_PREFIX } from '../config/env';
 import type { WorkspacePaths } from './workspace';
 import {
   appendJsonEvent,
@@ -17,27 +14,27 @@ import {
   sendAgentMessageToStream,
   type EventSink,
 } from './event-store';
-import { clearActiveSession } from './session-state';
+import { clearActiveTask } from './session-state';
 import {
   getSandboxConfig,
-  resolveSandboxSystemPrompt,
+  resolveSystemPrompt,
 } from '../platform/load-sandbox-config';
+import { resolvePermissionMode } from '../platform/schema';
 
-export type RunSessionOptions = {
-  sessionId: string;
+export type RunTaskOptions = {
+  taskId: string;
   sdkSessionId?: string;
   prompt: string;
-  context?: unknown;
+  systemPrompt?: string;
+  metadata?: Record<string, unknown>;
   abortController: AbortController;
   streamName: string;
-  captureSdkSessionId?: boolean;
-  ourSessionId?: string;
   isResuming: boolean;
   workspace: WorkspacePaths;
 };
 
-export function buildStreamName(sessionId: string) {
-  return `${S2_STREAM_PREFIX}:${sessionId}`;
+export function buildStreamName(taskId: string) {
+  return `${S2_STREAM_PREFIX}:${taskId}`;
 }
 
 function serializeError(error: unknown) {
@@ -48,202 +45,147 @@ function serializeError(error: unknown) {
       stack: error.stack,
     };
   }
-
   if (typeof error === 'string') {
     return { message: error };
   }
-
   return { message: 'Unknown error' };
 }
 
-async function publishSessionReady(params: {
+async function publishTaskReady(params: {
   stream: EventSink;
   sdkSessionId: string;
-  sessionId: string;
-  ourSessionId?: string;
+  taskId: string;
   timestamp: string;
 }) {
   await appendJsonEvent(params.stream, {
-    type: 'session_ready',
-    ourSessionId: params.ourSessionId ?? params.sessionId,
+    type: 'task_ready',
+    taskId: params.taskId,
     sdkSessionId: params.sdkSessionId,
     timestamp: params.timestamp,
   });
 }
 
-export async function runAgentSession(options: RunSessionOptions) {
-  const sessionStartTime = Date.now();
-  const stream = createEventSink(options.sessionId, options.streamName);
-  const timestamp = () => new Date().toISOString();
+export async function runAgentTask(options: RunTaskOptions) {
+  const startTime = Date.now();
+  const stream = createEventSink(options.taskId, options.streamName);
+  const ts = () => new Date().toISOString();
   let sdkSessionId: string | undefined = options.sdkSessionId;
   let messageCount = 0;
   let sdkSession: SalamboSession | null = null;
   const abortSignal = options.abortController.signal;
 
-  const interruptSdkSession = async () => {
-    if (!sdkSession) {
-      return;
-    }
-
-    try {
-      await sdkSession.interrupt();
-    } catch (error) {
-      console.warn(`[${new Date().toISOString()}] Failed to interrupt SDK session`, error);
-    }
-
-    try {
-      sdkSession.abort();
-    } catch (error) {
-      console.warn(`[${new Date().toISOString()}] Failed to abort SDK session`, error);
-    }
+  const interruptSdk = async () => {
+    if (!sdkSession) return;
+    try { await sdkSession.interrupt(); } catch { /* best effort */ }
+    try { sdkSession.abort(); } catch { /* best effort */ }
   };
 
-  const abortListener = () => {
-    void interruptSdkSession();
-  };
-
+  const abortListener = () => { void interruptSdk(); };
   abortSignal.addEventListener('abort', abortListener, { once: true });
 
   await appendJsonEvent(stream, {
-    type: 'session_init',
-    sessionId: options.sessionId,
+    type: 'task_init',
+    taskId: options.taskId,
     workspace: options.workspace.root,
     promptPreview: options.prompt.slice(0, 2000),
-    context: sanitizePayload(options.context ?? null),
-    timestamp: timestamp(),
+    metadata: sanitizePayload(options.metadata ?? null),
+    timestamp: ts(),
   });
 
   if (options.isResuming && sdkSessionId) {
-    await publishSessionReady({
-      stream,
-      sdkSessionId,
-      sessionId: options.sessionId,
-      ourSessionId: options.ourSessionId,
-      timestamp: timestamp(),
-    });
+    await publishTaskReady({ stream, sdkSessionId, taskId: options.taskId, timestamp: ts() });
   }
 
   try {
-    const sandboxConfig = getSandboxConfig();
+    const config = getSandboxConfig();
     const sessionOptions: SessionOptions = {
-      model: CODEX_MODEL,
-      provider: CODEX_PROVIDER,
+      model: config.model,
+      provider: config.provider,
       cwd: options.workspace.root,
-      codexPath: SALAMBO_CODEX_PATH || undefined,
-      permissionMode: sandboxConfig.agent.permissionMode,
-      sandboxMode: sandboxConfig.agent.sandboxMode,
-      systemPrompt: resolveSandboxSystemPrompt(options.context),
-      hooks: sandboxConfig.hooks,
-      mcpServers: sandboxConfig.mcp,
+      codexPath: config.codexPath,
+      permissionMode: resolvePermissionMode(config.permissions) as PermissionMode,
+      sandboxMode: config.sandbox as SdkSandboxMode,
+      systemPrompt: resolveSystemPrompt(config, options.systemPrompt),
+      hooks: config.hooks,
+      mcpServers: config.mcp,
     };
 
-    if (options.isResuming ? options.sdkSessionId : undefined) {
+    if (options.isResuming && options.sdkSessionId) {
       sessionOptions.resume = options.sdkSessionId;
     }
 
     sdkSession = createSession(sessionOptions);
 
     if (abortSignal.aborted) {
-      throw new Error('Session aborted before prompt dispatch');
+      throw new Error('Task aborted before prompt dispatch');
     }
 
     await sdkSession.send(options.prompt);
 
-    if (options.captureSdkSessionId && !sdkSessionId) {
-      const createdSessionId = sdkSession.sessionId || sdkSession.threadId;
-
-      if (createdSessionId) {
-        sdkSessionId = createdSessionId;
-        await publishSessionReady({
-          stream,
-          sdkSessionId,
-          sessionId: options.sessionId,
-          ourSessionId: options.ourSessionId,
-          timestamp: timestamp(),
-        });
+    // Capture SDK session ID from the session object
+    if (!sdkSessionId) {
+      const id = sdkSession.sessionId || sdkSession.threadId;
+      if (id) {
+        sdkSessionId = id;
+        await publishTaskReady({ stream, sdkSessionId, taskId: options.taskId, timestamp: ts() });
       }
     }
 
     for await (const message of sdkSession.stream()) {
       messageCount++;
+      if (abortSignal.aborted) break;
 
-      if (abortSignal.aborted) {
-        break;
-      }
-
-      const messageSessionId = (message as { session_id?: string }).session_id;
+      // Capture SDK session ID from init message if we still don't have it
+      const msgSessionId = (message as { session_id?: string }).session_id;
       if (
-        options.captureSdkSessionId &&
         !sdkSessionId &&
         message.type === 'system' &&
         (message as { subtype?: string }).subtype === 'init' &&
-        messageSessionId
+        msgSessionId
       ) {
-        sdkSessionId = messageSessionId;
-        await publishSessionReady({
-          stream,
-          sdkSessionId,
-          sessionId: options.sessionId,
-          ourSessionId: options.ourSessionId,
-          timestamp: timestamp(),
-        });
+        sdkSessionId = msgSessionId;
+        await publishTaskReady({ stream, sdkSessionId, taskId: options.taskId, timestamp: ts() });
       }
 
       await sendAgentMessageToStream({
         stream,
-        sessionId: options.sessionId,
+        taskId: options.taskId,
         sdkSessionId,
         message,
-        timestamp: timestamp(),
+        timestamp: ts(),
       });
-    }
-
-    if (abortSignal.aborted) {
-      await appendJsonEvent(stream, {
-        type: 'session_cancelled',
-        sessionId: options.sessionId,
-        sdkSessionId,
-        timestamp: timestamp(),
-      });
-      return;
     }
 
     await appendJsonEvent(stream, {
-      type: 'session_complete',
-      sessionId: options.sessionId,
+      type: abortSignal.aborted ? 'task_cancelled' : 'task_complete',
+      taskId: options.taskId,
       sdkSessionId,
-      timestamp: timestamp(),
+      timestamp: ts(),
     });
   } catch (error) {
     const aborted = abortSignal.aborted;
-    console.error(`[${new Date().toISOString()}] Session failed for ${options.sessionId}`, error);
+    console.error(`[${ts()}] Task failed: ${options.taskId}`, error);
 
     try {
       await appendJsonEvent(stream, {
-        type: aborted ? 'session_cancelled' : 'session_error',
-        sessionId: options.sessionId,
+        type: aborted ? 'task_cancelled' : 'task_error',
+        taskId: options.taskId,
         sdkSessionId,
         error: aborted ? undefined : serializeError(error),
-        timestamp: timestamp(),
+        timestamp: ts(),
       });
     } catch (streamError) {
-      console.error(`[${new Date().toISOString()}] Failed to publish session error`, streamError);
+      console.error(`[${ts()}] Failed to publish task error`, streamError);
     }
   } finally {
     abortSignal.removeEventListener('abort', abortListener);
 
     if (sdkSession) {
-      try {
-        await sdkSession[Symbol.asyncDispose]();
-      } catch (error) {
-        console.warn(`[${new Date().toISOString()}] Failed to dispose SDK session`, error);
-      }
+      try { await sdkSession[Symbol.asyncDispose](); } catch { /* best effort */ }
     }
 
-    clearActiveSession();
-    const sessionDuration = Date.now() - sessionStartTime;
-    console.log(
-      `[${new Date().toISOString()}] Session ${options.sessionId} finished in ${sessionDuration}ms with ${messageCount} streamed messages`,
-    );
+    clearActiveTask();
+    const duration = Date.now() - startTime;
+    console.log(`[${ts()}] Task ${options.taskId} finished in ${duration}ms (${messageCount} messages)`);
   }
 }
