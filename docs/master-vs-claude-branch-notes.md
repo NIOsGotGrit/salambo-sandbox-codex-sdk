@@ -108,8 +108,8 @@ Why this is bad-for-now:
 
 For the next pass, keep:
 
-- `sandbox/agent.ts`
-- TOML profiles in `sandbox/codex-home/config.toml`
+- `harness-config/agent.ts`
+- TOML profiles in `harness-config/codex-home/config.toml`
 - the slimmer `createSession()` input surface
 - config validation
 

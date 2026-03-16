@@ -6,10 +6,11 @@ dist/
 .DS_Store
 coverage/
 .nyc_output/
+.artifacts/
 .codex-home/*
 !.codex-home/config.toml
-sandbox/codex-home/*
-!sandbox/codex-home/config.toml
+harness-config/codex-home/*
+!harness-config/codex-home/config.toml
 
 # IDE
 .idea/

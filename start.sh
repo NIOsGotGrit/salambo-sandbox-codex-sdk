@@ -6,8 +6,8 @@ export CODEX_HOME=${CODEX_HOME:-/home/node/.codex-sandbox}
 
 mkdir -p "$CODEX_HOME"
 
-if [ ! -f "$CODEX_HOME/config.toml" ] && [ -f /app/sandbox/codex-home/config.toml ]; then
-  cp /app/sandbox/codex-home/config.toml "$CODEX_HOME/config.toml"
+if [ ! -f "$CODEX_HOME/config.toml" ] && [ -f /app/harness-config/codex-home/config.toml ]; then
+  cp /app/harness-config/codex-home/config.toml "$CODEX_HOME/config.toml"
 fi
 
 if [ -n "${OPENAI_API_KEY:-}" ] && [ ! -f "$CODEX_HOME/auth.json" ]; then

@@ -8,29 +8,30 @@ COPY package*.json ./
 RUN npm install
 RUN find /app/node_modules -path '*/salambo-codex-bin-*/bin/*' -type f -exec chmod 755 {} \;
 
-# Copy source + sandbox config for build
+# Copy source + harness config for build
 COPY src ./src
-COPY sandbox ./sandbox
+COPY harness-config ./harness-config
+COPY scripts ./scripts
 COPY tsconfig.json ./
 
 # Build TypeScript
 RUN npm run build
 
-# Install sandbox system packages
-COPY sandbox/docker/apt-packages.txt /tmp/apt-packages.txt
+# Materialize docker build inputs from harness-config/docker.ts
+RUN node --import tsx scripts/materialize-image-config.mjs /tmp/image-config
+
+# Install harness system packages
 RUN apt-get update && \
-    grep -Ev '^\s*(#|$)' /tmp/apt-packages.txt | xargs -r apt-get install -y && \
+    grep -Ev '^\s*(#|$)' /tmp/image-config/apt-packages.txt | xargs -r apt-get install -y && \
     rm -rf /var/lib/apt/lists/*
 
-# Install sandbox npm tools
-COPY sandbox/docker/npm-tools.txt /tmp/npm-tools.txt
-RUN if grep -Eq '\S' /tmp/npm-tools.txt; then \
-      grep -Ev '^\s*(#|$)' /tmp/npm-tools.txt | xargs -r npm install -g; \
+# Install harness npm tools
+RUN if grep -Eq '\S' /tmp/image-config/npm-tools.txt; then \
+      grep -Ev '^\s*(#|$)' /tmp/image-config/npm-tools.txt | xargs -r npm install -g; \
     fi
 
-# Install sandbox bootstrap script
-COPY sandbox/docker/bootstrap.sh /tmp/docker-bootstrap.sh
-RUN sed -i 's/\r$//' /tmp/docker-bootstrap.sh && chmod +x /tmp/docker-bootstrap.sh && /tmp/docker-bootstrap.sh
+# Install harness bootstrap script
+RUN sed -i 's/\r$//' /tmp/image-config/bootstrap.sh && chmod +x /tmp/image-config/bootstrap.sh && /tmp/image-config/bootstrap.sh
 
 # Create workspace directory
 RUN mkdir -p /workspace && chown -R node:node /workspace
@@ -40,11 +41,12 @@ RUN python3 -m venv /opt/pyenv
 ENV PATH="/opt/pyenv/bin:${PATH}"
 
 # Install Python packages
-COPY requirements.txt /app/requirements.txt
-RUN pip install --no-cache-dir -r /app/requirements.txt
+RUN if grep -Eq '\S' /tmp/image-config/requirements.txt; then \
+      pip install --no-cache-dir -r /tmp/image-config/requirements.txt; \
+    fi
 
 # Copy initial workspace files
-COPY --chown=node:node sandbox/initial-workspace/ /workspace/
+COPY --chown=node:node harness-config/initial-workspace/ /workspace/
 
 # Copy startup script
 COPY start.sh /app/start.sh

@@ -38,7 +38,7 @@ function makeSandboxConfig(): SandboxConfig {
     configProfile: 'default',
     instructions: 'Test instructions',
     workspace: {
-      seed: 'sandbox/initial-workspace',
+      seed: 'harness-config/initial-workspace',
       dirs: ['work', 'work/files', 'work/templates', 'outputs'],
     },
     hooks: {},

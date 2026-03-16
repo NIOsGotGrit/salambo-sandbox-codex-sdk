@@ -1,7 +1,7 @@
 #:schema https://developers.openai.com/codex/config-schema.json
 
 # ── Default profile ──
-# Active when configProfile = "default" in sandbox/agent.ts
+# Active when configProfile = "default" in harness-config/agent.ts
 [profile.default]
 model = "gpt-5.2-codex"
 model_reasoning_summary = "detailed"

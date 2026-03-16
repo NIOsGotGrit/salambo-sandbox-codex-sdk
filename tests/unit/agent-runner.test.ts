@@ -20,7 +20,7 @@ function makeConfig() {
     configProfile: 'default',
     instructions: 'Default instructions',
     workspace: {
-      seed: 'sandbox/initial-workspace',
+      seed: 'harness-config/initial-workspace',
       dirs: ['work', 'work/files', 'work/templates', 'outputs'],
     },
     hooks: {},

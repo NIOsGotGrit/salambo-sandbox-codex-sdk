@@ -12,5 +12,5 @@ coverage
 .nyc_output
 *.log
 .codex-home
-sandbox/codex-home/*
-!sandbox/codex-home/config.toml
+harness-config/codex-home/*
+!harness-config/codex-home/config.toml

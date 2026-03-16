@@ -36,7 +36,7 @@ export function startServer() {
   console.log(`\nAgent Sandbox API running on port ${PORT}`);
   console.log(`  Profile:   ${config.configProfile}`);
   console.log(`  Workspace: ${WORKSPACE_DIR}`);
-  console.log(`\nCustomize: sandbox/agent.ts`);
+  console.log(`\nCustomize: harness-config/agent.ts`);
   console.log(`\nEndpoints:`);
   console.log(`  GET  /health`);
   console.log(`  POST /agent/query            { sandboxId, prompt, systemPrompt?, sdkSessionId?, metadata? }`);

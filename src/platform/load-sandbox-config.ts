@@ -1,4 +1,4 @@
-import sandboxConfig from '../../sandbox/agent';
+import sandboxConfig from '../../harness-config/agent';
 import type { SandboxConfig } from './schema';
 
 let validated = false;
@@ -38,7 +38,7 @@ function validateConfig(config: SandboxConfig) {
   }
 
   if (errors.length > 0) {
-    console.error('\n[sandbox] Invalid sandbox/agent.ts:');
+    console.error('\n[harness-config] Invalid harness-config/agent.ts:');
     for (const e of errors) {
       console.error(`  - ${e}`);
     }
@@ -46,5 +46,5 @@ function validateConfig(config: SandboxConfig) {
     process.exit(1);
   }
 
-  console.log('[sandbox] Config validated');
+  console.log('[harness-config] Agent config validated');
 }

@@ -15,6 +15,6 @@
     "declaration": true,
     "types": ["node"]
   },
-  "include": ["src/**/*", "sandbox/agent.ts", "sandbox/docker.ts"],
+  "include": ["src/**/*", "harness-config/agent.ts", "harness-config/docker.ts"],
   "exclude": ["node_modules", "dist"]
 }

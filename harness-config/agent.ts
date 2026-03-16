@@ -14,7 +14,7 @@ export default defineAgent({
 
   // ── Workspace layout baked into the Docker image ──
   workspace: {
-    seed: 'sandbox/initial-workspace',
+    seed: 'harness-config/initial-workspace',
     dirs: ['work', 'work/files', 'work/templates', 'outputs'],
   },
 

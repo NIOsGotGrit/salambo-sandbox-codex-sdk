@@ -2,17 +2,17 @@
 
 Edit these files first:
 
-- `sandbox/agent.ts`
-- `sandbox/codex-home/config.toml`
+- `harness-config/agent.ts`
+- `harness-config/codex-home/config.toml`
 
-## `sandbox/agent.ts` — what you control in code
+## `harness-config/agent.ts` — what you control in code
 
 - `configProfile` — which TOML profile to activate (e.g. `"default"`, `"heavy-reasoning"`)
 - `instructions` — agent system prompt
 - `workspace` — directory layout baked into the Docker image
 - `hooks` — lifecycle hooks (code callbacks, not TOML-level)
 
-## `sandbox/codex-home/config.toml` — what the SDK reads at runtime
+## `harness-config/codex-home/config.toml` — what the SDK reads at runtime
 
 Model, reasoning, permissions, sandbox mode, MCP servers, and other
 Codex-native settings live here as **profiles**:
@@ -31,7 +31,7 @@ approval_policy = "full-auto"
 sandbox_mode = "full"
 ```
 
-The `configProfile` value in `sandbox/agent.ts` selects which profile
+The `configProfile` value in `harness-config/agent.ts` selects which profile
 the SDK activates at session creation time.
 
 ## What goes where
