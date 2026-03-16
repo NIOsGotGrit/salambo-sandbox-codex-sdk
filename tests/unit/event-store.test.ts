@@ -11,14 +11,10 @@ test('sendSessionEventToStream stores raw protocol events under session.event', 
   const sandboxId = 'sandbox-test-1';
   const timestamp = '2026-03-16T12:00:00.000Z';
   const rawEvent = {
-    method: 'rawResponseItem/completed',
+    method: 'thread/started',
     params: {
       threadId: 'thread-1',
-      turnId: 'turn-1',
-      item: {
-        type: 'message',
-        role: 'assistant',
-      },
+      cwd: '/workspace',
     },
   };
 

@@ -33,10 +33,9 @@ There are two different meanings of "response":
 - this is a reply to an SDK/client request
 - this is not model output
 
-2. Model response item
-- comes through the notification stream
-- specifically under `rawResponseItem/completed`
-- actual model item is in `params.item`
+2. Product-facing model output
+- this may be derived later by the platform
+- it should not be assumed to exist as a special sandbox-level event shape
 
 Because of that, avoid using the word `response` alone when talking about the raw transport.
 
@@ -72,7 +71,6 @@ Standard notification methods currently covered by the generated protocol includ
 - `turn/plan/updated`
 - `item/started`
 - `item/completed`
-- `rawResponseItem/completed`
 - `item/agentMessage/delta`
 - `item/plan/delta`
 - `item/commandExecution/outputDelta`
@@ -133,21 +131,6 @@ Local parse failures from stdout come through as:
 
 These are SDK/client-side transport problems, not app-server notifications.
 
-## Model-Only Path
-
-If we only care about actual model output, the important notification is:
-
-- `rawResponseItem/completed`
-
-The model item lives at:
-
-- `msg.params.item`
-
-So:
-
-- full SDK stream = all protocol traffic
-- model-only stream = only `rawResponseItem/completed.params.item`
-
 ## What The Sandbox Owns
 
 Even with raw SDK events, the sandbox still owns its outer lifecycle.
@@ -201,9 +184,7 @@ If S2 is the transport backbone and the platform derives logs/SSE/views later, t
 
 That preserves information and avoids re-implementing protocol parsing inside the sandbox.
 
-If we ever want a product-friendly extracted lane, that can be derived later from:
-
-- `session.event` where `event.method === "rawResponseItem/completed"`
+If we ever want a product-friendly extracted lane, that should be derived later on the platform side from the raw session stream, not assumed by the sandbox contract.
 
 ## Practical Rule
 
@@ -212,7 +193,7 @@ Do not duplicate model items into two lanes by default.
 Recommended approach:
 
 - send the full SDK stream through `session.event`
-- downstream extracts `rawResponseItem/completed.params.item` when it needs model-only views
+- let the platform derive higher-level views later if it needs them
 
 ## Migration Decision
 
@@ -252,6 +233,7 @@ Current preferred S2 shape:
 - preserve the raw SDK event untouched
 - avoid adding `kind`
 - avoid splitting into `notification` / `request` / `rpc_result` / `parse_error` event families
+- avoid assuming any special `rawResponseItem/completed` path in the sandbox
 
 The platform can interpret and route the raw payload later for:
 
