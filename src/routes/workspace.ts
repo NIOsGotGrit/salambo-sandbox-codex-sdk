@@ -3,13 +3,40 @@ import path from 'path';
 import { promises as fs } from 'fs';
 import { setupWorkspace } from '../core/workspace';
 import { stopFileWatcher } from '../core/file-sync';
-import { clearActiveSandbox, getActiveSandbox } from '../core/session-state';
+import {
+  clearActiveSandbox,
+  getActiveSandbox,
+  type ActiveSandbox,
+} from '../core/session-state';
 import {
   downloadFileToPath,
   resolveSafeWorkspaceTargetPath,
 } from '../core/workspace-files';
+import type { WorkspacePaths } from '../core/workspace';
 
-export function createWorkspaceRouter() {
+type WorkspaceRouterDeps = {
+  setupWorkspace: () => Promise<WorkspacePaths>;
+  stopFileWatcher: typeof stopFileWatcher;
+  clearActiveSandbox: typeof clearActiveSandbox;
+  getActiveSandbox: () => ActiveSandbox | null;
+  downloadFileToPath: typeof downloadFileToPath;
+  resolveSafeWorkspaceTargetPath: typeof resolveSafeWorkspaceTargetPath;
+  mkdir: typeof fs.mkdir;
+  writeFile: typeof fs.writeFile;
+};
+
+const defaultDeps: WorkspaceRouterDeps = {
+  setupWorkspace,
+  stopFileWatcher,
+  clearActiveSandbox,
+  getActiveSandbox,
+  downloadFileToPath,
+  resolveSafeWorkspaceTargetPath,
+  mkdir: fs.mkdir,
+  writeFile: fs.writeFile,
+};
+
+export function createWorkspaceRouter(deps: WorkspaceRouterDeps = defaultDeps) {
   const router = Router();
 
   router.delete('/workspace/sandbox/:sandboxId', async (req: Request, res: Response) => {
@@ -19,14 +46,14 @@ export function createWorkspaceRouter() {
       return res.status(400).json({ error: 'sandboxId parameter is required' });
     }
 
-    const active = getActiveSandbox();
+    const active = deps.getActiveSandbox();
     if (active && active.sandboxId === sandboxId) {
       active.abortController.abort();
-      clearActiveSandbox();
+      deps.clearActiveSandbox();
     }
 
     try {
-      await stopFileWatcher();
+      await deps.stopFileWatcher();
       return res.json({ success: true, sandboxId });
     } catch (error) {
       console.error(`[${new Date().toISOString()}] Cleanup failed`, error);
@@ -52,7 +79,7 @@ export function createWorkspaceRouter() {
     }
 
     try {
-      const workspace = await setupWorkspace();
+      const workspace = await deps.setupWorkspace();
       const saved: string[] = [];
 
       for (const file of files) {
@@ -60,7 +87,7 @@ export function createWorkspaceRouter() {
           return res.status(400).json({ error: 'Each file needs targetPath and contentBase64' });
         }
 
-        const safePath = resolveSafeWorkspaceTargetPath(file.targetPath);
+        const safePath = deps.resolveSafeWorkspaceTargetPath(file.targetPath);
         const absolutePath = path.join(workspace.root, safePath);
         const bytes = Buffer.from(file.contentBase64, 'base64');
 
@@ -68,8 +95,8 @@ export function createWorkspaceRouter() {
           return res.status(413).json({ error: 'File exceeds 100MB limit' });
         }
 
-        await fs.mkdir(path.dirname(absolutePath), { recursive: true });
-        await fs.writeFile(absolutePath, bytes);
+        await deps.mkdir(path.dirname(absolutePath), { recursive: true });
+        await deps.writeFile(absolutePath, bytes);
         saved.push(`/workspace/${safePath}`);
       }
 
@@ -98,7 +125,7 @@ export function createWorkspaceRouter() {
     }
 
     try {
-      const workspace = await setupWorkspace();
+      const workspace = await deps.setupWorkspace();
       const saved: string[] = [];
 
       for (const file of files) {
@@ -109,10 +136,10 @@ export function createWorkspaceRouter() {
           return res.status(400).json({ error: 'sourceUrl must use https' });
         }
 
-        const safePath = resolveSafeWorkspaceTargetPath(file.targetPath);
+        const safePath = deps.resolveSafeWorkspaceTargetPath(file.targetPath);
         const absolutePath = path.join(workspace.root, safePath);
-        await fs.mkdir(path.dirname(absolutePath), { recursive: true });
-        await downloadFileToPath(file.sourceUrl, absolutePath, 1024 * 1024 * 100);
+        await deps.mkdir(path.dirname(absolutePath), { recursive: true });
+        await deps.downloadFileToPath(file.sourceUrl, absolutePath, 1024 * 1024 * 100);
         saved.push(`/workspace/${safePath}`);
       }
 

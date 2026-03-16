@@ -35,6 +35,26 @@ export type RunSandboxOptions = {
   workspace: WorkspacePaths;
 };
 
+type AgentRunnerDeps = {
+  createSession: typeof createSession;
+  createEventSink: typeof createEventSink;
+  appendJsonEvent: typeof appendJsonEvent;
+  sendSessionEventToStream: typeof sendSessionEventToStream;
+  clearActiveSandbox: typeof clearActiveSandbox;
+  getSandboxConfig: typeof getSandboxConfig;
+  resolveSystemPrompt: typeof resolveSystemPrompt;
+};
+
+const defaultDeps: AgentRunnerDeps = {
+  createSession,
+  createEventSink,
+  appendJsonEvent,
+  sendSessionEventToStream,
+  clearActiveSandbox,
+  getSandboxConfig,
+  resolveSystemPrompt,
+};
+
 export function buildStreamName(sandboxId: string) {
   return `${S2_STREAM_PREFIX}:${sandboxId}`;
 }
@@ -58,8 +78,8 @@ async function publishSandboxReady(params: {
   sdkSessionId: string;
   sandboxId: string;
   timestamp: string;
-}) {
-  await appendJsonEvent(params.stream, {
+}, deps: AgentRunnerDeps) {
+  await deps.appendJsonEvent(params.stream, {
     type: 'sandbox.ready',
     sandboxId: params.sandboxId,
     sdkSessionId: params.sdkSessionId,
@@ -91,9 +111,12 @@ function extractSdkSessionId(event: unknown): string | undefined {
   return undefined;
 }
 
-export async function runAgentSandbox(options: RunSandboxOptions) {
+export async function runAgentSandbox(
+  options: RunSandboxOptions,
+  deps: AgentRunnerDeps = defaultDeps,
+) {
   const startTime = Date.now();
-  const stream = createEventSink(options.sandboxId, options.streamName);
+  const stream = deps.createEventSink(options.sandboxId, options.streamName);
   const ts = () => new Date().toISOString();
   let sdkSessionId: string | undefined = options.sdkSessionId;
   let messageCount = 0;
@@ -109,7 +132,7 @@ export async function runAgentSandbox(options: RunSandboxOptions) {
   const abortListener = () => { void interruptSdk(); };
   abortSignal.addEventListener('abort', abortListener, { once: true });
 
-  await appendJsonEvent(stream, {
+  await deps.appendJsonEvent(stream, {
     type: 'sandbox.init',
     sandboxId: options.sandboxId,
     workspace: options.workspace.root,
@@ -119,15 +142,15 @@ export async function runAgentSandbox(options: RunSandboxOptions) {
   });
 
   if (options.isResuming && sdkSessionId) {
-    await publishSandboxReady({ stream, sdkSessionId, sandboxId: options.sandboxId, timestamp: ts() });
+    await publishSandboxReady({ stream, sdkSessionId, sandboxId: options.sandboxId, timestamp: ts() }, deps);
   }
 
   try {
-    const config = getSandboxConfig();
+    const config = deps.getSandboxConfig();
     const sessionOptions: SandboxSessionOptions = {
       configProfile: config.configProfile,
       cwd: options.workspace.root,
-      systemPrompt: resolveSystemPrompt(config, options.systemPrompt),
+      systemPrompt: deps.resolveSystemPrompt(config, options.systemPrompt),
       hooks: config.hooks,
     };
 
@@ -135,7 +158,7 @@ export async function runAgentSandbox(options: RunSandboxOptions) {
       sessionOptions.resume = options.sdkSessionId;
     }
 
-    sdkSession = createSession(sessionOptions as SessionOptions);
+    sdkSession = deps.createSession(sessionOptions as SessionOptions);
 
     if (abortSignal.aborted) {
       throw new Error('Sandbox aborted before prompt dispatch');
@@ -148,7 +171,7 @@ export async function runAgentSandbox(options: RunSandboxOptions) {
       const id = sdkSession.sessionId || sdkSession.threadId;
       if (id) {
         sdkSessionId = id;
-        await publishSandboxReady({ stream, sdkSessionId, sandboxId: options.sandboxId, timestamp: ts() });
+        await publishSandboxReady({ stream, sdkSessionId, sandboxId: options.sandboxId, timestamp: ts() }, deps);
       }
     }
 
@@ -159,10 +182,10 @@ export async function runAgentSandbox(options: RunSandboxOptions) {
       const msgSessionId = extractSdkSessionId(message);
       if (!sdkSessionId && msgSessionId) {
         sdkSessionId = msgSessionId;
-        await publishSandboxReady({ stream, sdkSessionId, sandboxId: options.sandboxId, timestamp: ts() });
+        await publishSandboxReady({ stream, sdkSessionId, sandboxId: options.sandboxId, timestamp: ts() }, deps);
       }
 
-      await sendSessionEventToStream({
+      await deps.sendSessionEventToStream({
         stream,
         sandboxId: options.sandboxId,
         sdkSessionId,
@@ -171,7 +194,7 @@ export async function runAgentSandbox(options: RunSandboxOptions) {
       });
     }
 
-    await appendJsonEvent(stream, {
+    await deps.appendJsonEvent(stream, {
       type: abortSignal.aborted ? 'sandbox.cancelled' : 'sandbox.complete',
       sandboxId: options.sandboxId,
       sdkSessionId,
@@ -182,7 +205,7 @@ export async function runAgentSandbox(options: RunSandboxOptions) {
     console.error(`[${ts()}] Sandbox failed: ${options.sandboxId}`, error);
 
     try {
-      await appendJsonEvent(stream, {
+      await deps.appendJsonEvent(stream, {
         type: aborted ? 'sandbox.cancelled' : 'sandbox.error',
         sandboxId: options.sandboxId,
         sdkSessionId,
@@ -199,7 +222,7 @@ export async function runAgentSandbox(options: RunSandboxOptions) {
       try { await sdkSession[Symbol.asyncDispose](); } catch { /* best effort */ }
     }
 
-    clearActiveSandbox();
+    deps.clearActiveSandbox();
     const duration = Date.now() - startTime;
     console.log(`[${ts()}] Sandbox ${options.sandboxId} finished in ${duration}ms (${messageCount} messages)`);
   }

@@ -1,7 +1,11 @@
 import { Router, type Request, type Response } from 'express';
 import { WORKSPACE_DIR } from '../config/env';
 import { setupWorkspace } from '../core/workspace';
-import { buildStreamName, runAgentSandbox } from '../core/agent-runner';
+import {
+  buildStreamName,
+  runAgentSandbox,
+  type RunSandboxOptions,
+} from '../core/agent-runner';
 import { getEventBackend, getLocalEvents } from '../core/event-store';
 import { ensureFileWatcher } from '../core/file-sync';
 import {
@@ -9,20 +13,53 @@ import {
   enqueue,
   getActiveSandbox,
   getQueueLength,
+  type ActiveSandbox,
   setActiveSandbox,
 } from '../core/session-state';
 import { getSandboxConfig } from '../platform/load-sandbox-config';
+import type { WorkspacePaths } from '../core/workspace';
+import type { SandboxConfig } from '../platform/schema';
 
-export function createAgentRouter() {
+type AgentRouterDeps = {
+  setupWorkspace: () => Promise<WorkspacePaths>;
+  ensureFileWatcher: (workspace: WorkspacePaths) => Promise<void>;
+  runAgentSandbox: (options: RunSandboxOptions) => Promise<void>;
+  buildStreamName: (sandboxId: string) => string;
+  getEventBackend: typeof getEventBackend;
+  getLocalEvents: typeof getLocalEvents;
+  clearActiveSandbox: typeof clearActiveSandbox;
+  enqueue: typeof enqueue;
+  getActiveSandbox: () => ActiveSandbox | null;
+  getQueueLength: typeof getQueueLength;
+  setActiveSandbox: typeof setActiveSandbox;
+  getSandboxConfig: () => SandboxConfig;
+};
+
+const defaultDeps: AgentRouterDeps = {
+  setupWorkspace,
+  ensureFileWatcher,
+  runAgentSandbox,
+  buildStreamName,
+  getEventBackend,
+  getLocalEvents,
+  clearActiveSandbox,
+  enqueue,
+  getActiveSandbox,
+  getQueueLength,
+  setActiveSandbox,
+  getSandboxConfig,
+};
+
+export function createAgentRouter(deps: AgentRouterDeps = defaultDeps) {
   const router = Router();
 
   router.get('/health', (_req: Request, res: Response) => {
-    const config = getSandboxConfig();
+    const config = deps.getSandboxConfig();
     res.json({
       status: 'healthy',
       workspace: WORKSPACE_DIR,
       configProfile: config.configProfile,
-      eventBackend: getEventBackend(),
+      eventBackend: deps.getEventBackend(),
       timestamp: new Date().toISOString(),
     });
   });
@@ -40,19 +77,19 @@ export function createAgentRouter() {
     }
 
     const isResuming = typeof sdkSessionId === 'string' && sdkSessionId.length > 0;
-    const streamName = buildStreamName(sandboxId);
+    const streamName = deps.buildStreamName(sandboxId);
     const abortController = new AbortController();
 
     // Queue if another sandbox run is active
-    if (getActiveSandbox()) {
-      const position = getQueueLength() + 1;
+    if (deps.getActiveSandbox()) {
+      const position = deps.getQueueLength() + 1;
       res.status(202).json({
         sandboxId,
         status: 'queued',
         position,
       });
 
-      await enqueue(sandboxId);
+      await deps.enqueue(sandboxId);
       // When we get here, the previous sandbox run is done — fall through to run
     } else {
       res.status(202).json({
@@ -62,10 +99,10 @@ export function createAgentRouter() {
     }
 
     try {
-      const workspace = await setupWorkspace();
-      await ensureFileWatcher(workspace);
+      const workspace = await deps.setupWorkspace();
+      await deps.ensureFileWatcher(workspace);
 
-      setActiveSandbox({
+      deps.setActiveSandbox({
         sandboxId,
         abortController,
         streamName,
@@ -73,7 +110,7 @@ export function createAgentRouter() {
         agentToken,
       });
 
-      await runAgentSandbox({
+      await deps.runAgentSandbox({
         sandboxId,
         sdkSessionId: isResuming ? sdkSessionId : undefined,
         prompt,
@@ -85,7 +122,7 @@ export function createAgentRouter() {
         workspace,
       });
     } catch (error) {
-      clearActiveSandbox();
+      deps.clearActiveSandbox();
       console.error(`[${new Date().toISOString()}] Sandbox ${sandboxId} failed unexpectedly`, error);
     }
   });
@@ -97,20 +134,20 @@ export function createAgentRouter() {
       return res.status(400).json({ error: 'sandboxId is required' });
     }
 
-    const active = getActiveSandbox();
+    const active = deps.getActiveSandbox();
     if (!active || active.sandboxId !== sandboxId) {
       return res.status(404).json({ error: 'Sandbox not found or already completed' });
     }
 
     active.abortController.abort();
-    clearActiveSandbox();
+    deps.clearActiveSandbox();
 
     return res.json({ success: true, sandboxId });
   });
 
   router.get('/agent/status', (_req: Request, res: Response) => {
-    const active = getActiveSandbox();
-    const config = getSandboxConfig();
+    const active = deps.getActiveSandbox();
+    const config = deps.getSandboxConfig();
 
     res.json({
       hasActiveSandbox: !!active,
@@ -121,9 +158,9 @@ export function createAgentRouter() {
             workspace: active.workspace.root,
           }
         : null,
-      queueLength: getQueueLength(),
+      queueLength: deps.getQueueLength(),
       configProfile: config.configProfile,
-      eventBackend: getEventBackend(),
+      eventBackend: deps.getEventBackend(),
       timestamp: new Date().toISOString(),
     });
   });
@@ -141,7 +178,7 @@ export function createAgentRouter() {
       ? Math.max(1, Math.min(1000, Math.trunc(requestedLimit)))
       : 200;
 
-    const events = getLocalEvents(sandboxId, limit);
+    const events = deps.getLocalEvents(sandboxId, limit);
     if (!events) {
       return res.status(404).json({ error: 'No events found for sandbox' });
     }

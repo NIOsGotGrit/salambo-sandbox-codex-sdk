@@ -8,6 +8,7 @@
     "build": "tsc",
     "start": "node dist/src/server.js",
     "dev": "tsx watch src/server.ts",
+    "test": "node scripts/run-tests.mjs",
     "typecheck": "tsc --noEmit",
     "sandbox:validate": "tsx -e \"import c from './sandbox/agent'; import d from './sandbox/docker'; console.log('sandbox/agent.ts OK'); console.log('sandbox/docker.ts OK');\"",
     "docker:build": "docker build -t salambo-sandbox-codex-sdk .",
