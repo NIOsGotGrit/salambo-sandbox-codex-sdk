@@ -18,9 +18,9 @@ Those files define:
 
 Current event types:
 
-- `session_init`
-- `session_ready`
-- `agent_message`
-- `session_complete`
-- `session_cancelled`
-- `session_error`
+- `sandbox.init`
+- `sandbox.ready`
+- `sandbox.complete`
+- `sandbox.cancelled`
+- `sandbox.error`
+- `session.event`

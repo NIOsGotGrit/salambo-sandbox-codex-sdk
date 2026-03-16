@@ -14,7 +14,7 @@ import {
   appendJsonEvent,
   createEventSink,
   sanitizePayload,
-  sendAgentMessageToStream,
+  sendSessionEventToStream,
   type EventSink,
 } from './event-store';
 import { clearActiveSandbox } from './session-state';
@@ -60,11 +60,35 @@ async function publishSandboxReady(params: {
   timestamp: string;
 }) {
   await appendJsonEvent(params.stream, {
-    type: 'sandbox_ready',
+    type: 'sandbox.ready',
     sandboxId: params.sandboxId,
     sdkSessionId: params.sdkSessionId,
     timestamp: params.timestamp,
   });
+}
+
+function extractSdkSessionId(event: unknown): string | undefined {
+  if (!event || typeof event !== 'object') {
+    return undefined;
+  }
+
+  const rawSessionId = (event as { session_id?: unknown }).session_id;
+  if (typeof rawSessionId === 'string' && rawSessionId.length > 0) {
+    return rawSessionId;
+  }
+
+  const method = (event as { method?: unknown }).method;
+  const params = (event as { params?: unknown }).params;
+  if (
+    method === 'thread/started' &&
+    params &&
+    typeof params === 'object' &&
+    typeof (params as { threadId?: unknown }).threadId === 'string'
+  ) {
+    return (params as { threadId: string }).threadId;
+  }
+
+  return undefined;
 }
 
 export async function runAgentSandbox(options: RunSandboxOptions) {
@@ -86,7 +110,7 @@ export async function runAgentSandbox(options: RunSandboxOptions) {
   abortSignal.addEventListener('abort', abortListener, { once: true });
 
   await appendJsonEvent(stream, {
-    type: 'sandbox_init',
+    type: 'sandbox.init',
     sandboxId: options.sandboxId,
     workspace: options.workspace.root,
     promptPreview: options.prompt.slice(0, 2000),
@@ -132,29 +156,23 @@ export async function runAgentSandbox(options: RunSandboxOptions) {
       messageCount++;
       if (abortSignal.aborted) break;
 
-      // Capture SDK session ID from init message if we still don't have it
-      const msgSessionId = (message as { session_id?: string }).session_id;
-      if (
-        !sdkSessionId &&
-        message.type === 'system' &&
-        (message as { subtype?: string }).subtype === 'init' &&
-        msgSessionId
-      ) {
+      const msgSessionId = extractSdkSessionId(message);
+      if (!sdkSessionId && msgSessionId) {
         sdkSessionId = msgSessionId;
         await publishSandboxReady({ stream, sdkSessionId, sandboxId: options.sandboxId, timestamp: ts() });
       }
 
-      await sendAgentMessageToStream({
+      await sendSessionEventToStream({
         stream,
         sandboxId: options.sandboxId,
         sdkSessionId,
-        message,
+        event: message,
         timestamp: ts(),
       });
     }
 
     await appendJsonEvent(stream, {
-      type: abortSignal.aborted ? 'sandbox_cancelled' : 'sandbox_complete',
+      type: abortSignal.aborted ? 'sandbox.cancelled' : 'sandbox.complete',
       sandboxId: options.sandboxId,
       sdkSessionId,
       timestamp: ts(),
@@ -165,7 +183,7 @@ export async function runAgentSandbox(options: RunSandboxOptions) {
 
     try {
       await appendJsonEvent(stream, {
-        type: aborted ? 'sandbox_cancelled' : 'sandbox_error',
+        type: aborted ? 'sandbox.cancelled' : 'sandbox.error',
         sandboxId: options.sandboxId,
         sdkSessionId,
         error: aborted ? undefined : serializeError(error),

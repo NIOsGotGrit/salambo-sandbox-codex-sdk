@@ -89,26 +89,20 @@ export function createEventSink(sandboxId: string, streamName: string): EventSin
   return { kind: 's2', sandboxId, streamName, stream: basin.stream(streamName) };
 }
 
-function isAgentSdkMessage(payload: unknown): payload is { type: string } {
-  return Boolean(payload && typeof (payload as { type?: unknown }).type === 'string');
-}
-
-export async function sendAgentMessageToStream(params: {
+export async function sendSessionEventToStream(params: {
   stream: EventSink;
   sandboxId: string;
   sdkSessionId?: string;
-  message: unknown;
+  event: unknown;
   timestamp: string;
 }) {
-  const sanitizedMessage = sanitizePayload(params.message);
-  const messageType = isAgentSdkMessage(sanitizedMessage) ? sanitizedMessage.type : 'unknown';
+  const sanitizedEvent = sanitizePayload(params.event);
 
   await appendJsonEvent(params.stream, {
-    type: 'agent_message',
+    type: 'session.event',
     sandboxId: params.sandboxId,
     sdkSessionId: params.sdkSessionId,
-    messageType,
-    message: sanitizedMessage,
+    event: sanitizedEvent,
     timestamp: params.timestamp,
   });
 }

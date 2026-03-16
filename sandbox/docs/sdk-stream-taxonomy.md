@@ -154,11 +154,11 @@ Even with raw SDK events, the sandbox still owns its outer lifecycle.
 
 Current sandbox lifecycle events are:
 
-- `sandbox_init`
-- `sandbox_ready`
-- `sandbox_complete`
-- `sandbox_cancelled`
-- `sandbox_error`
+- `sandbox.init`
+- `sandbox.ready`
+- `sandbox.complete`
+- `sandbox.cancelled`
+- `sandbox.error`
 
 Conceptually these are sandbox lifecycle events, not Codex thread events.
 
