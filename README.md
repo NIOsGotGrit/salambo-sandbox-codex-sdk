@@ -2,14 +2,28 @@
 
 Dockerized sandbox template for `salambo-codex-agent-sdk` with the same HTTP API and S2 event streaming contract as the Claude-based template.
 
-## Template Shape
+## Quickstart
+
+```bash
+cp .env.example .env
+npm install
+npm run dev
+```
+
+Health check:
+
+```bash
+curl http://localhost:3000/health
+```
+
+## Repo Shape
 
 This repo is split into two layers:
 
 - fixed platform layer: `src/routes`, `src/core`, and `src/platform`
 - customizable surface: `harness-config/`, `docs/`, `.env`, and Docker/runtime files at the root
 
-The goal is to make the AI-engineer customization points obvious without changing the backend contract.
+The goal is to make the AI-engineer customization points obvious without changing the platform contract.
 
 ## Do Not Change Lightly
 
@@ -24,7 +38,7 @@ The goal is to make the AI-engineer customization points obvious without changin
 
 See [event-contract.md](/C:/Users/nicol/WebstormProjects/salambo-sandbox/salambo-sandbox-codex-sdk/docs/event-contract.md) for the fixed event surface.
 
-## Customize First
+## Config Surface
 
 Edit these first when turning the template into your own sandbox:
 
@@ -41,19 +55,13 @@ Guides:
 - [customize-workspace.md](/C:/Users/nicol/WebstormProjects/salambo-sandbox/salambo-sandbox-codex-sdk/docs/customize-workspace.md)
 - [customize-docker.md](/C:/Users/nicol/WebstormProjects/salambo-sandbox/salambo-sandbox-codex-sdk/docs/customize-docker.md)
 
+More project docs:
+
+- [architecture.md](/C:/Users/nicol/WebstormProjects/salambo-sandbox/salambo-sandbox-codex-sdk/docs/architecture.md)
+- [testing.md](/C:/Users/nicol/WebstormProjects/salambo-sandbox/salambo-sandbox-codex-sdk/docs/testing.md)
+- [releasing.md](/C:/Users/nicol/WebstormProjects/salambo-sandbox/salambo-sandbox-codex-sdk/docs/releasing.md)
+
 ## Local Development
-
-```bash
-cp .env.example .env
-npm install
-npm run dev
-```
-
-Health check:
-
-```bash
-curl http://localhost:3000/health
-```
 
 Local no-S2 testing:
 
@@ -160,6 +168,18 @@ For local inspection of the generated build inputs:
 ```bash
 npm run harness:materialize
 ```
+
+## Testing
+
+Run the local confidence checks:
+
+```bash
+npm run typecheck
+npm test
+npm run harness:materialize
+```
+
+The CI workflow runs those checks plus a Docker build smoke test on PRs and protected branches.
 
 ## Notes
 
