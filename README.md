@@ -81,7 +81,7 @@ In Docker, startup switches `CODEX_HOME` to `/home/node/.codex-sandbox`, copies 
 
 Configuration split:
 
-- `harness-config/agent.ts` is the main customization file for agent behavior, hooks, and workspace defaults
+- `harness-config/agent.ts` is the main customization file for agent behavior and workspace defaults
 - `harness-config/codex-home/config.toml` owns Codex-native settings such as model, sandbox mode, approvals, and MCP profiles
 - `harness-config/docker.ts` is the machine-config source of truth for apt, npm, pip, and bootstrap setup
 - `.env` owns runtime/deploy values such as `OPENAI_API_KEY`, `PORT`, and S2 configuration
@@ -184,4 +184,5 @@ The CI workflow runs those checks plus a Docker build smoke test on PRs and prot
 ## Notes
 
 - The runtime uses `salambo-codex-agent-sdk` and the SDK V2 `createSession()` flow.
-- Binary resolution is handled by `salambo-codex-agent-sdk`; set `SALAMBO_CODEX_PATH` only if you want to override the bundled/default lookup.
+- The image installs the Codex CLI and Linux runtime package by default through `harness-config/docker.ts`.
+- The SDK no longer bundles Codex; it expects `codex` or `codex-app-server` in `PATH`, or `SALAMBO_CODEX_PATH` if you want to override the runtime explicitly.

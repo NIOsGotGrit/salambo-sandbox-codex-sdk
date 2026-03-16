@@ -34,7 +34,7 @@ This is the template customization surface.
 
 Use it to control:
 
-- agent instructions and hooks
+- agent instructions
 - Codex-native profiles
 - machine/runtime packages and setup
 - initial filesystem contents

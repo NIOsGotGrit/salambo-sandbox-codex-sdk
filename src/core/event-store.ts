@@ -4,7 +4,7 @@ import {
   S2_ACCESS_TOKEN,
   S2_BASIN,
   S2_ENABLED,
-} from '../config/env';
+} from '../config/env.js';
 
 type JsonEventPayload = Record<string, unknown>;
 

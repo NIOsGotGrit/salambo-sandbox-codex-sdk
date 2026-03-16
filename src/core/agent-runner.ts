@@ -3,25 +3,20 @@ import {
   type SalamboSession,
   type SessionOptions,
 } from 'salambo-codex-agent-sdk';
-
-// Extend SessionOptions until the SDK ships configProfile natively
-type SandboxSessionOptions = SessionOptions & {
-  configProfile?: string;
-};
-import { S2_STREAM_PREFIX } from '../config/env';
-import type { WorkspacePaths } from './workspace';
+import { S2_STREAM_PREFIX } from '../config/env.js';
+import type { WorkspacePaths } from './workspace.js';
 import {
   appendJsonEvent,
   createEventSink,
   sanitizePayload,
   sendSessionEventToStream,
   type EventSink,
-} from './event-store';
-import { clearActiveSandbox } from './session-state';
+} from './event-store.js';
+import { clearActiveSandbox } from './session-state.js';
 import {
   getSandboxConfig,
   resolveSystemPrompt,
-} from '../platform/load-sandbox-config';
+} from '../platform/load-sandbox-config.js';
 
 export type RunSandboxOptions = {
   sandboxId: string;
@@ -147,18 +142,17 @@ export async function runAgentSandbox(
 
   try {
     const config = deps.getSandboxConfig();
-    const sessionOptions: SandboxSessionOptions = {
+    const sessionOptions: SessionOptions = {
       configProfile: config.configProfile,
       cwd: options.workspace.root,
       systemPrompt: deps.resolveSystemPrompt(config, options.systemPrompt),
-      hooks: config.hooks,
     };
 
     if (options.isResuming && options.sdkSessionId) {
       sessionOptions.resume = options.sdkSessionId;
     }
 
-    sdkSession = deps.createSession(sessionOptions as SessionOptions);
+    sdkSession = deps.createSession(sessionOptions);
 
     if (abortSignal.aborted) {
       throw new Error('Sandbox aborted before prompt dispatch');

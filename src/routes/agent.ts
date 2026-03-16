@@ -1,13 +1,13 @@
 import { Router, type Request, type Response } from 'express';
-import { WORKSPACE_DIR } from '../config/env';
-import { setupWorkspace } from '../core/workspace';
+import { WORKSPACE_DIR } from '../config/env.js';
+import { setupWorkspace } from '../core/workspace.js';
 import {
   buildStreamName,
   runAgentSandbox,
   type RunSandboxOptions,
-} from '../core/agent-runner';
-import { getEventBackend, getLocalEvents } from '../core/event-store';
-import { ensureFileWatcher } from '../core/file-sync';
+} from '../core/agent-runner.js';
+import { getEventBackend, getLocalEvents } from '../core/event-store.js';
+import { ensureFileWatcher } from '../core/file-sync.js';
 import {
   clearActiveSandbox,
   enqueue,
@@ -15,10 +15,10 @@ import {
   getQueueLength,
   type ActiveSandbox,
   setActiveSandbox,
-} from '../core/session-state';
-import { getSandboxConfig } from '../platform/load-sandbox-config';
-import type { WorkspacePaths } from '../core/workspace';
-import type { SandboxConfig } from '../platform/schema';
+} from '../core/session-state.js';
+import { getSandboxConfig } from '../platform/load-sandbox-config.js';
+import type { WorkspacePaths } from '../core/workspace.js';
+import type { SandboxConfig } from '../platform/schema.js';
 
 type AgentRouterDeps = {
   setupWorkspace: () => Promise<WorkspacePaths>;

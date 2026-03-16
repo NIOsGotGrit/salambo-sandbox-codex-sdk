@@ -1,5 +1,5 @@
-import imageConfig from '../../harness-config/docker';
-import type { ImageConfig } from './image-schema';
+import imageConfig from '../../harness-config/docker.js';
+import type { ImageConfig } from './image-schema.js';
 
 let validated = false;
 

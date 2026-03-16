@@ -1,4 +1,4 @@
-import { defineImage } from '../src/platform/image-schema';
+import { defineImage } from '../src/platform/image-schema.js';
 
 export default defineImage({
   // ── System packages (apt-get install) ──
@@ -12,7 +12,10 @@ export default defineImage({
   ],
 
   // ── Global npm tools (npm install -g) ──
-  npm: [],
+  npm: [
+    '@openai/codex',
+    '@openai/codex-linux-x64@npm:@openai/codex@0.115.0-linux-x64',
+  ],
 
   // ── Python packages (pip install inside /opt/pyenv) ──
   pip: [

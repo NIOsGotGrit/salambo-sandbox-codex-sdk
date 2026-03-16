@@ -1,7 +1,7 @@
 import { promises as fs } from 'fs';
 import path from 'path';
-import { WORKSPACE_DIR } from '../config/env';
-import { getSandboxConfig } from '../platform/load-sandbox-config';
+import { WORKSPACE_DIR } from '../config/env.js';
+import { getSandboxConfig } from '../platform/load-sandbox-config.js';
 
 export type WorkspacePaths = {
   root: string;

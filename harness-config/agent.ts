@@ -1,4 +1,4 @@
-import { defineAgent } from '../src/platform/schema';
+import { defineAgent } from '../src/platform/schema.js';
 
 export default defineAgent({
   // ── Which TOML profile to activate ──
@@ -17,7 +17,4 @@ export default defineAgent({
     seed: 'harness-config/initial-workspace',
     dirs: ['work', 'work/files', 'work/templates', 'outputs'],
   },
-
-  // ── Lifecycle hooks ──
-  hooks: {},
 });

@@ -1,6 +1,6 @@
 import { mkdir, writeFile } from 'node:fs/promises';
 import path from 'node:path';
-import type { ImageConfig } from './image-schema';
+import type { ImageConfig } from './image-schema.js';
 
 export type MaterializedImageConfig = {
   aptPackagesText: string;

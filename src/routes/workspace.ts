@@ -1,18 +1,18 @@
 import { Router, type Request, type Response } from 'express';
 import path from 'path';
 import { promises as fs } from 'fs';
-import { setupWorkspace } from '../core/workspace';
-import { stopFileWatcher } from '../core/file-sync';
+import { setupWorkspace } from '../core/workspace.js';
+import { stopFileWatcher } from '../core/file-sync.js';
 import {
   clearActiveSandbox,
   getActiveSandbox,
   type ActiveSandbox,
-} from '../core/session-state';
+} from '../core/session-state.js';
 import {
   downloadFileToPath,
   resolveSafeWorkspaceTargetPath,
-} from '../core/workspace-files';
-import type { WorkspacePaths } from '../core/workspace';
+} from '../core/workspace-files.js';
+import type { WorkspacePaths } from '../core/workspace.js';
 
 type WorkspaceRouterDeps = {
   setupWorkspace: () => Promise<WorkspacePaths>;

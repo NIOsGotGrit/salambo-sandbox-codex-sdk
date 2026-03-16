@@ -1,5 +1,5 @@
-import sandboxConfig from '../../harness-config/agent';
-import type { SandboxConfig } from './schema';
+import sandboxConfig from '../../harness-config/agent.js';
+import type { SandboxConfig } from './schema.js';
 
 let validated = false;
 

@@ -40,7 +40,7 @@
     "cors": "^2.8.5",
     "dotenv": "^16.4.5",
     "express": "^4.21.1",
-    "salambo-codex-agent-sdk": "^0.1.4"
+    "salambo-codex-agent-sdk": "^1.0.0"
   },
   "devDependencies": {
     "@types/cors": "^2.8.17",

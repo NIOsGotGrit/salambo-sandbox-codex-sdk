@@ -4,7 +4,7 @@ import {
   SANDBOX_FILE_LOGGING,
   SANDBOX_LOG_DIR,
   SANDBOX_LOG_FILE,
-} from '../config/env';
+} from '../config/env.js';
 
 const SANDBOX_LOG_PATH = path.join(SANDBOX_LOG_DIR, SANDBOX_LOG_FILE);
 

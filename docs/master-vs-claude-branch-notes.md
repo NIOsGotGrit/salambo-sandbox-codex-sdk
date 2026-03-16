@@ -30,13 +30,11 @@ This note captures the current differences between `master` and the Claude explo
   - `configProfile`
   - `instructions`
   - `workspace`
-  - `hooks`
 - Moves more runtime/session config into TOML profiles in `sandbox/codex-home/config.toml`.
 - Simplifies the `createSession()` call so the sandbox mainly passes:
   - `configProfile`
   - `cwd`
   - `systemPrompt`
-  - `hooks`
 - Adds validation around the sandbox config shape.
 - Makes the template feel more TOML-first and closer to the new SDK direction.
 

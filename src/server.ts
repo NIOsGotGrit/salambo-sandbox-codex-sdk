@@ -1,10 +1,10 @@
 import express, { type NextFunction, type Request, type Response } from 'express';
 import cors from 'cors';
-import { PORT, WORKSPACE_DIR, logStartupWarnings } from './config/env';
-import { installFileLogger } from './logging/file-logger';
-import { createAgentRouter } from './routes/agent';
-import { createWorkspaceRouter } from './routes/workspace';
-import { getSandboxConfig } from './platform/load-sandbox-config';
+import { PORT, WORKSPACE_DIR, logStartupWarnings } from './config/env.js';
+import { installFileLogger } from './logging/file-logger.js';
+import { createAgentRouter } from './routes/agent.js';
+import { createWorkspaceRouter } from './routes/workspace.js';
+import { getSandboxConfig } from './platform/load-sandbox-config.js';
 
 export function createApp() {
   const app = express();

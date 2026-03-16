@@ -1,6 +1,6 @@
 import dotenv from 'dotenv';
-import { initializeCodexHome } from './codex-home';
-import { DEFAULT_WORKSPACE_DIR } from './paths';
+import { initializeCodexHome } from './codex-home.js';
+import { DEFAULT_WORKSPACE_DIR } from './paths.js';
 
 dotenv.config();
 

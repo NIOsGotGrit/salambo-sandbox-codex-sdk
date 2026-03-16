@@ -23,7 +23,6 @@ function makeConfig() {
       seed: 'harness-config/initial-workspace',
       dirs: ['work', 'work/files', 'work/templates', 'outputs'],
     },
-    hooks: {},
   };
 }
 
