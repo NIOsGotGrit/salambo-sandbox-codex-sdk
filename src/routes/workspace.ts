@@ -3,7 +3,7 @@ import path from 'path';
 import { promises as fs } from 'fs';
 import { setupWorkspace } from '../core/workspace';
 import { stopFileWatcher } from '../core/file-sync';
-import { clearActiveTask, getActiveTask } from '../core/session-state';
+import { clearActiveSandbox, getActiveSandbox } from '../core/session-state';
 import {
   downloadFileToPath,
   resolveSafeWorkspaceTargetPath,
@@ -12,25 +12,25 @@ import {
 export function createWorkspaceRouter() {
   const router = Router();
 
-  router.delete('/workspace/session/:taskId', async (req: Request, res: Response) => {
-    const rawTaskId = req.params.taskId;
-    const taskId = Array.isArray(rawTaskId) ? rawTaskId[0] : rawTaskId;
-    if (!taskId) {
-      return res.status(400).json({ error: 'taskId parameter is required' });
+  router.delete('/workspace/sandbox/:sandboxId', async (req: Request, res: Response) => {
+    const rawSandboxId = req.params.sandboxId;
+    const sandboxId = Array.isArray(rawSandboxId) ? rawSandboxId[0] : rawSandboxId;
+    if (!sandboxId) {
+      return res.status(400).json({ error: 'sandboxId parameter is required' });
     }
 
-    const active = getActiveTask();
-    if (active && active.taskId === taskId) {
+    const active = getActiveSandbox();
+    if (active && active.sandboxId === sandboxId) {
       active.abortController.abort();
-      clearActiveTask();
+      clearActiveSandbox();
     }
 
     try {
       await stopFileWatcher();
-      return res.json({ success: true, taskId });
+      return res.json({ success: true, sandboxId });
     } catch (error) {
       console.error(`[${new Date().toISOString()}] Cleanup failed`, error);
-      return res.status(500).json({ error: 'Failed to cleanup session' });
+      return res.status(500).json({ error: 'Failed to cleanup sandbox' });
     }
   });
 

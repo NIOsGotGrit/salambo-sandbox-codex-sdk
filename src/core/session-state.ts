@@ -1,35 +1,35 @@
 import type { WorkspacePaths } from './workspace';
 
-export type ActiveTask = {
-  taskId: string;
+export type ActiveSandbox = {
+  sandboxId: string;
   abortController: AbortController;
   streamName: string;
   workspace: WorkspacePaths;
   agentToken?: string;
 };
 
-let activeTask: ActiveTask | null = null;
+let activeSandbox: ActiveSandbox | null = null;
 const queue: Array<{
-  taskId: string;
+  sandboxId: string;
   resolve: () => void;
 }> = [];
 
-export function getActiveTask() {
-  return activeTask;
+export function getActiveSandbox() {
+  return activeSandbox;
 }
 
-export function setActiveTask(task: ActiveTask | null) {
-  activeTask = task;
+export function setActiveSandbox(sandbox: ActiveSandbox | null) {
+  activeSandbox = sandbox;
 }
 
-export function clearActiveTask() {
-  activeTask = null;
+export function clearActiveSandbox() {
+  activeSandbox = null;
   drainQueue();
 }
 
-export function enqueue(taskId: string): Promise<void> {
+export function enqueue(sandboxId: string): Promise<void> {
   return new Promise((resolve) => {
-    queue.push({ taskId, resolve });
+    queue.push({ sandboxId, resolve });
   });
 }
 

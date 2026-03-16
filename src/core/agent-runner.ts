@@ -17,14 +17,14 @@ import {
   sendAgentMessageToStream,
   type EventSink,
 } from './event-store';
-import { clearActiveTask } from './session-state';
+import { clearActiveSandbox } from './session-state';
 import {
   getSandboxConfig,
   resolveSystemPrompt,
 } from '../platform/load-sandbox-config';
 
-export type RunTaskOptions = {
-  taskId: string;
+export type RunSandboxOptions = {
+  sandboxId: string;
   sdkSessionId?: string;
   prompt: string;
   systemPrompt?: string;
@@ -35,8 +35,8 @@ export type RunTaskOptions = {
   workspace: WorkspacePaths;
 };
 
-export function buildStreamName(taskId: string) {
-  return `${S2_STREAM_PREFIX}:${taskId}`;
+export function buildStreamName(sandboxId: string) {
+  return `${S2_STREAM_PREFIX}:${sandboxId}`;
 }
 
 function serializeError(error: unknown) {
@@ -53,23 +53,23 @@ function serializeError(error: unknown) {
   return { message: 'Unknown error' };
 }
 
-async function publishTaskReady(params: {
+async function publishSandboxReady(params: {
   stream: EventSink;
   sdkSessionId: string;
-  taskId: string;
+  sandboxId: string;
   timestamp: string;
 }) {
   await appendJsonEvent(params.stream, {
-    type: 'task_ready',
-    taskId: params.taskId,
+    type: 'sandbox_ready',
+    sandboxId: params.sandboxId,
     sdkSessionId: params.sdkSessionId,
     timestamp: params.timestamp,
   });
 }
 
-export async function runAgentTask(options: RunTaskOptions) {
+export async function runAgentSandbox(options: RunSandboxOptions) {
   const startTime = Date.now();
-  const stream = createEventSink(options.taskId, options.streamName);
+  const stream = createEventSink(options.sandboxId, options.streamName);
   const ts = () => new Date().toISOString();
   let sdkSessionId: string | undefined = options.sdkSessionId;
   let messageCount = 0;
@@ -86,8 +86,8 @@ export async function runAgentTask(options: RunTaskOptions) {
   abortSignal.addEventListener('abort', abortListener, { once: true });
 
   await appendJsonEvent(stream, {
-    type: 'task_init',
-    taskId: options.taskId,
+    type: 'sandbox_init',
+    sandboxId: options.sandboxId,
     workspace: options.workspace.root,
     promptPreview: options.prompt.slice(0, 2000),
     metadata: sanitizePayload(options.metadata ?? null),
@@ -95,7 +95,7 @@ export async function runAgentTask(options: RunTaskOptions) {
   });
 
   if (options.isResuming && sdkSessionId) {
-    await publishTaskReady({ stream, sdkSessionId, taskId: options.taskId, timestamp: ts() });
+    await publishSandboxReady({ stream, sdkSessionId, sandboxId: options.sandboxId, timestamp: ts() });
   }
 
   try {
@@ -114,7 +114,7 @@ export async function runAgentTask(options: RunTaskOptions) {
     sdkSession = createSession(sessionOptions as SessionOptions);
 
     if (abortSignal.aborted) {
-      throw new Error('Task aborted before prompt dispatch');
+      throw new Error('Sandbox aborted before prompt dispatch');
     }
 
     await sdkSession.send(options.prompt);
@@ -124,7 +124,7 @@ export async function runAgentTask(options: RunTaskOptions) {
       const id = sdkSession.sessionId || sdkSession.threadId;
       if (id) {
         sdkSessionId = id;
-        await publishTaskReady({ stream, sdkSessionId, taskId: options.taskId, timestamp: ts() });
+        await publishSandboxReady({ stream, sdkSessionId, sandboxId: options.sandboxId, timestamp: ts() });
       }
     }
 
@@ -141,12 +141,12 @@ export async function runAgentTask(options: RunTaskOptions) {
         msgSessionId
       ) {
         sdkSessionId = msgSessionId;
-        await publishTaskReady({ stream, sdkSessionId, taskId: options.taskId, timestamp: ts() });
+        await publishSandboxReady({ stream, sdkSessionId, sandboxId: options.sandboxId, timestamp: ts() });
       }
 
       await sendAgentMessageToStream({
         stream,
-        taskId: options.taskId,
+        sandboxId: options.sandboxId,
         sdkSessionId,
         message,
         timestamp: ts(),
@@ -154,25 +154,25 @@ export async function runAgentTask(options: RunTaskOptions) {
     }
 
     await appendJsonEvent(stream, {
-      type: abortSignal.aborted ? 'task_cancelled' : 'task_complete',
-      taskId: options.taskId,
+      type: abortSignal.aborted ? 'sandbox_cancelled' : 'sandbox_complete',
+      sandboxId: options.sandboxId,
       sdkSessionId,
       timestamp: ts(),
     });
   } catch (error) {
     const aborted = abortSignal.aborted;
-    console.error(`[${ts()}] Task failed: ${options.taskId}`, error);
+    console.error(`[${ts()}] Sandbox failed: ${options.sandboxId}`, error);
 
     try {
       await appendJsonEvent(stream, {
-        type: aborted ? 'task_cancelled' : 'task_error',
-        taskId: options.taskId,
+        type: aborted ? 'sandbox_cancelled' : 'sandbox_error',
+        sandboxId: options.sandboxId,
         sdkSessionId,
         error: aborted ? undefined : serializeError(error),
         timestamp: ts(),
       });
     } catch (streamError) {
-      console.error(`[${ts()}] Failed to publish task error`, streamError);
+      console.error(`[${ts()}] Failed to publish sandbox error`, streamError);
     }
   } finally {
     abortSignal.removeEventListener('abort', abortListener);
@@ -181,8 +181,8 @@ export async function runAgentTask(options: RunTaskOptions) {
       try { await sdkSession[Symbol.asyncDispose](); } catch { /* best effort */ }
     }
 
-    clearActiveTask();
+    clearActiveSandbox();
     const duration = Date.now() - startTime;
-    console.log(`[${ts()}] Task ${options.taskId} finished in ${duration}ms (${messageCount} messages)`);
+    console.log(`[${ts()}] Sandbox ${options.sandboxId} finished in ${duration}ms (${messageCount} messages)`);
   }
 }

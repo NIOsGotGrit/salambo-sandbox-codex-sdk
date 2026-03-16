@@ -36,11 +36,11 @@ app.listen(PORT, () => {
   console.log(`\nCustomize: sandbox/agent.ts`);
   console.log(`\nEndpoints:`);
   console.log(`  GET  /health`);
-  console.log(`  POST /agent/query            { taskId, prompt, systemPrompt?, sdkSessionId?, metadata? }`);
-  console.log(`  POST /agent/interrupt         { taskId }`);
+  console.log(`  POST /agent/query            { sandboxId, prompt, systemPrompt?, sdkSessionId?, metadata? }`);
+  console.log(`  POST /agent/interrupt         { sandboxId }`);
   console.log(`  GET  /agent/status`);
-  console.log(`  GET  /agent/events/:taskId`);
+  console.log(`  GET  /agent/events/:sandboxId`);
   console.log(`  POST /workspace/files/sync`);
   console.log(`  POST /workspace/files/import`);
-  console.log(`  DELETE /workspace/session/:taskId`);
+  console.log(`  DELETE /workspace/sandbox/:sandboxId`);
 });

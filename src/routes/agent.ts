@@ -1,15 +1,15 @@
 import { Router, type Request, type Response } from 'express';
 import { WORKSPACE_DIR } from '../config/env';
 import { setupWorkspace } from '../core/workspace';
-import { buildStreamName, runAgentTask } from '../core/agent-runner';
+import { buildStreamName, runAgentSandbox } from '../core/agent-runner';
 import { getEventBackend, getLocalEvents } from '../core/event-store';
 import { ensureFileWatcher } from '../core/file-sync';
 import {
-  clearActiveTask,
+  clearActiveSandbox,
   enqueue,
-  getActiveTask,
+  getActiveSandbox,
   getQueueLength,
-  setActiveTask,
+  setActiveSandbox,
 } from '../core/session-state';
 import { getSandboxConfig } from '../platform/load-sandbox-config';
 
@@ -28,35 +28,35 @@ export function createAgentRouter() {
   });
 
   router.post('/agent/query', async (req: Request, res: Response) => {
-    const { prompt, taskId, sdkSessionId, systemPrompt, metadata } = req.body ?? {};
+    const { prompt, sandboxId, sdkSessionId, systemPrompt, metadata } = req.body ?? {};
     const agentToken = typeof req.headers.authorization === 'string' ? req.headers.authorization : undefined;
 
     if (!prompt || typeof prompt !== 'string') {
       return res.status(400).json({ error: 'prompt is required and must be a string' });
     }
 
-    if (!taskId || typeof taskId !== 'string') {
-      return res.status(400).json({ error: 'taskId is required and must be a string' });
+    if (!sandboxId || typeof sandboxId !== 'string') {
+      return res.status(400).json({ error: 'sandboxId is required and must be a string' });
     }
 
     const isResuming = typeof sdkSessionId === 'string' && sdkSessionId.length > 0;
-    const streamName = buildStreamName(taskId);
+    const streamName = buildStreamName(sandboxId);
     const abortController = new AbortController();
 
-    // Queue if another task is running
-    if (getActiveTask()) {
+    // Queue if another sandbox run is active
+    if (getActiveSandbox()) {
       const position = getQueueLength() + 1;
       res.status(202).json({
-        taskId,
+        sandboxId,
         status: 'queued',
         position,
       });
 
-      await enqueue(taskId);
-      // When we get here, previous task is done — fall through to run
+      await enqueue(sandboxId);
+      // When we get here, the previous sandbox run is done — fall through to run
     } else {
       res.status(202).json({
-        taskId,
+        sandboxId,
         status: isResuming ? 'resuming' : 'accepted',
       });
     }
@@ -65,16 +65,16 @@ export function createAgentRouter() {
       const workspace = await setupWorkspace();
       await ensureFileWatcher(workspace);
 
-      setActiveTask({
-        taskId,
+      setActiveSandbox({
+        sandboxId,
         abortController,
         streamName,
         workspace,
         agentToken,
       });
 
-      await runAgentTask({
-        taskId,
+      await runAgentSandbox({
+        sandboxId,
         sdkSessionId: isResuming ? sdkSessionId : undefined,
         prompt,
         systemPrompt,
@@ -85,38 +85,38 @@ export function createAgentRouter() {
         workspace,
       });
     } catch (error) {
-      clearActiveTask();
-      console.error(`[${new Date().toISOString()}] Task ${taskId} failed unexpectedly`, error);
+      clearActiveSandbox();
+      console.error(`[${new Date().toISOString()}] Sandbox ${sandboxId} failed unexpectedly`, error);
     }
   });
 
   router.post('/agent/interrupt', (req: Request, res: Response) => {
-    const { taskId } = req.body ?? {};
+    const { sandboxId } = req.body ?? {};
 
-    if (!taskId || typeof taskId !== 'string') {
-      return res.status(400).json({ error: 'taskId is required' });
+    if (!sandboxId || typeof sandboxId !== 'string') {
+      return res.status(400).json({ error: 'sandboxId is required' });
     }
 
-    const active = getActiveTask();
-    if (!active || active.taskId !== taskId) {
-      return res.status(404).json({ error: 'Task not found or already completed' });
+    const active = getActiveSandbox();
+    if (!active || active.sandboxId !== sandboxId) {
+      return res.status(404).json({ error: 'Sandbox not found or already completed' });
     }
 
     active.abortController.abort();
-    clearActiveTask();
+    clearActiveSandbox();
 
-    return res.json({ success: true, taskId });
+    return res.json({ success: true, sandboxId });
   });
 
   router.get('/agent/status', (_req: Request, res: Response) => {
-    const active = getActiveTask();
+    const active = getActiveSandbox();
     const config = getSandboxConfig();
 
     res.json({
-      hasActiveTask: !!active,
-      task: active
+      hasActiveSandbox: !!active,
+      sandbox: active
         ? {
-            taskId: active.taskId,
+            sandboxId: active.sandboxId,
             streamName: active.streamName,
             workspace: active.workspace.root,
           }
@@ -128,11 +128,11 @@ export function createAgentRouter() {
     });
   });
 
-  router.get('/agent/events/:taskId', (req: Request, res: Response) => {
-    const rawTaskId = req.params.taskId;
-    const taskId = Array.isArray(rawTaskId) ? rawTaskId[0] : rawTaskId;
-    if (!taskId) {
-      return res.status(400).json({ error: 'taskId parameter is required' });
+  router.get('/agent/events/:sandboxId', (req: Request, res: Response) => {
+    const rawSandboxId = req.params.sandboxId;
+    const sandboxId = Array.isArray(rawSandboxId) ? rawSandboxId[0] : rawSandboxId;
+    if (!sandboxId) {
+      return res.status(400).json({ error: 'sandboxId parameter is required' });
     }
 
     const rawLimit = Array.isArray(req.query.limit) ? req.query.limit[0] : req.query.limit;
@@ -141,9 +141,9 @@ export function createAgentRouter() {
       ? Math.max(1, Math.min(1000, Math.trunc(requestedLimit)))
       : 200;
 
-    const events = getLocalEvents(taskId, limit);
+    const events = getLocalEvents(sandboxId, limit);
     if (!events) {
-      return res.status(404).json({ error: 'No events found for task' });
+      return res.status(404).json({ error: 'No events found for sandbox' });
     }
 
     return res.json(events);

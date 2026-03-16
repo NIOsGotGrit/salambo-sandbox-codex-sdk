@@ -31,8 +31,8 @@ function getS2Basin() {
 type S2Stream = ReturnType<ReturnType<typeof getS2Basin>['stream']>;
 
 export type EventSink =
-  | { kind: 's2'; taskId: string; streamName: string; stream: S2Stream }
-  | { kind: 'local'; taskId: string; streamName: string };
+  | { kind: 's2'; sandboxId: string; streamName: string; stream: S2Stream }
+  | { kind: 'local'; sandboxId: string; streamName: string };
 
 const localEventSessions = new Map<string, LocalEventSession>();
 
@@ -40,8 +40,8 @@ export function getEventBackend(): 's2' | 'local' {
   return S2_ENABLED ? 's2' : 'local';
 }
 
-function getOrCreateLocal(taskId: string): LocalEventSession {
-  const existing = localEventSessions.get(taskId);
+function getOrCreateLocal(sandboxId: string): LocalEventSession {
+  const existing = localEventSessions.get(sandboxId);
   if (existing) return existing;
 
   const created: LocalEventSession = {
@@ -49,12 +49,12 @@ function getOrCreateLocal(taskId: string): LocalEventSession {
     nextSequence: 1,
     updatedAt: new Date().toISOString(),
   };
-  localEventSessions.set(taskId, created);
+  localEventSessions.set(sandboxId, created);
   return created;
 }
 
-function recordLocalEvent(taskId: string, streamName: string, payload: JsonEventPayload) {
-  const session = getOrCreateLocal(taskId);
+function recordLocalEvent(sandboxId: string, streamName: string, payload: JsonEventPayload) {
+  const session = getOrCreateLocal(sandboxId);
   session.events.push({
     sequence: session.nextSequence++,
     streamName,
@@ -67,12 +67,12 @@ function recordLocalEvent(taskId: string, streamName: string, payload: JsonEvent
   }
 }
 
-export function getLocalEvents(taskId: string, limit: number) {
-  const session = localEventSessions.get(taskId);
+export function getLocalEvents(sandboxId: string, limit: number) {
+  const session = localEventSessions.get(sandboxId);
   if (!session) return null;
 
   return {
-    taskId,
+    sandboxId,
     eventBackend: getEventBackend(),
     totalEvents: session.events.length,
     returnedEvents: Math.min(limit, session.events.length),
@@ -81,12 +81,12 @@ export function getLocalEvents(taskId: string, limit: number) {
   };
 }
 
-export function createEventSink(taskId: string, streamName: string): EventSink {
+export function createEventSink(sandboxId: string, streamName: string): EventSink {
   if (!S2_ENABLED) {
-    return { kind: 'local', taskId, streamName };
+    return { kind: 'local', sandboxId, streamName };
   }
   const basin = getS2Basin();
-  return { kind: 's2', taskId, streamName, stream: basin.stream(streamName) };
+  return { kind: 's2', sandboxId, streamName, stream: basin.stream(streamName) };
 }
 
 function isAgentSdkMessage(payload: unknown): payload is { type: string } {
@@ -95,7 +95,7 @@ function isAgentSdkMessage(payload: unknown): payload is { type: string } {
 
 export async function sendAgentMessageToStream(params: {
   stream: EventSink;
-  taskId: string;
+  sandboxId: string;
   sdkSessionId?: string;
   message: unknown;
   timestamp: string;
@@ -105,7 +105,7 @@ export async function sendAgentMessageToStream(params: {
 
   await appendJsonEvent(params.stream, {
     type: 'agent_message',
-    taskId: params.taskId,
+    sandboxId: params.sandboxId,
     sdkSessionId: params.sdkSessionId,
     messageType,
     message: sanitizedMessage,
@@ -120,12 +120,12 @@ export async function appendJsonEvent(
 ) {
   // Always record locally first
   if (retryCount === 0) {
-    recordLocalEvent(stream.taskId, stream.streamName, payload);
+    recordLocalEvent(stream.sandboxId, stream.streamName, payload);
   }
 
   if (stream.kind === 'local') {
     if (retryCount === 0) {
-      console.log(`[${new Date().toISOString()}] LOCAL - ${payload.type} for task ${stream.taskId}`);
+      console.log(`[${new Date().toISOString()}] LOCAL - ${payload.type} for sandbox ${stream.sandboxId}`);
     }
     return;
   }
