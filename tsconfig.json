@@ -12,8 +12,9 @@
     "resolveJsonModule": true,
     "moduleResolution": "bundler",
     "sourceMap": true,
+    "declaration": true,
     "types": ["node"]
   },
-  "include": ["src/**/*", "sandbox/config.ts"],
+  "include": ["src/**/*", "harness-config/agent.ts", "harness-config/docker.ts"],
   "exclude": ["node_modules", "dist"]
 }

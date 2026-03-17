@@ -1,7 +1,7 @@
 import fs from 'fs';
 import path from 'path';
 import { spawnSync } from 'child_process';
-import imageConfig from '../sandbox/image.config.mjs';
+import imageConfig from '../harness-config/image.config.mjs';
 
 const PROJECT_ROOT = process.cwd();
 const PACKAGE_JSON_PATH = path.join(PROJECT_ROOT, 'package.json');
@@ -82,12 +82,12 @@ function buildContextTag(tag) {
 
 function assertRepositoryConfigured(command) {
   if (typeof imageConfig.repository !== 'string' || !imageConfig.repository.trim()) {
-    throw new Error('sandbox/image.config.mjs must define a repository value');
+    throw new Error('harness-config/image.config.mjs must define a repository value');
   }
 
   if (imageConfig.repository !== imageConfig.repository.toLowerCase()) {
     throw new Error(
-      'sandbox/image.config.mjs repository must be lowercase for Docker registries like GHCR',
+      'harness-config/image.config.mjs repository must be lowercase for Docker registries like GHCR',
     );
   }
 
@@ -96,7 +96,7 @@ function assertRepositoryConfigured(command) {
     imageConfig.repository.includes('your-username')
   ) {
     throw new Error(
-      'Set sandbox/image.config.mjs repository to your real image repository before pushing',
+      'Set harness-config/image.config.mjs repository to your real image repository before pushing',
     );
   }
 }

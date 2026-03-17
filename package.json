@@ -1,13 +1,17 @@
 {
   "name": "salambo-sandbox-codex-sdk",
-  "version": "1.0.2",
+  "version": "2.0.0",
   "description": "Dockerized sandbox for salambo-codex-agent-sdk with HTTP API",
   "type": "module",
-  "main": "src/server.ts",
+  "main": "dist/src/server.js",
   "scripts": {
-    "start": "tsx src/server.ts",
+    "build": "tsc",
+    "start": "node dist/src/server.js",
     "dev": "tsx watch src/server.ts",
+    "test": "node scripts/run-tests.mjs",
     "typecheck": "tsc --noEmit",
+    "harness:validate": "tsx -e \"import { getSandboxConfig } from './src/platform/load-sandbox-config'; import { getImageConfig } from './src/platform/load-image-config'; getSandboxConfig(); getImageConfig(); console.log('Harness config OK');\"",
+    "harness:materialize": "node --import tsx scripts/materialize-image-config.mjs",
     "docker:build": "docker build -t salambo-sandbox-codex-sdk .",
     "docker:run": "docker run -p 3000:3000 salambo-sandbox-codex-sdk",
     "image:build": "node scripts/docker-image.mjs build",
@@ -36,14 +40,13 @@
     "cors": "^2.8.5",
     "dotenv": "^16.4.5",
     "express": "^4.21.1",
-    "salambo-codex-agent-sdk": "^0.1.4",
-    "tsx": "^4.20.5"
+    "salambo-codex-agent-sdk": "^1.0.0"
   },
   "devDependencies": {
     "@types/cors": "^2.8.17",
     "@types/express": "^5.0.3",
     "@types/node": "^22.18.6",
+    "tsx": "^4.20.5",
     "typescript": "^5.9.2"
   }
 }
-

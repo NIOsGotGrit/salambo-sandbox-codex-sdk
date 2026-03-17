@@ -1,148 +1,175 @@
 import { Router, type Request, type Response } from 'express';
+import { WORKSPACE_DIR } from '../config/env.js';
+import { setupWorkspace } from '../core/workspace.js';
 import {
-  CODEX_MODEL,
-  CODEX_PROVIDER,
-  WORKSPACE_DIR,
-} from '../config/env';
-import { setupWorkspace } from '../core/workspace';
-import { buildStreamName, runAgentSession } from '../core/agent-runner';
-import { getEventBackend, getLocalEvents } from '../core/event-store';
-import { ensureFileWatcher } from '../core/file-sync';
+  buildStreamName,
+  runAgentSandbox,
+  type RunSandboxOptions,
+} from '../core/agent-runner.js';
+import { getEventBackend, getLocalEvents } from '../core/event-store.js';
+import { ensureFileWatcher } from '../core/file-sync.js';
 import {
-  clearActiveSession,
-  getActiveSession,
-  setActiveSession,
-} from '../core/session-state';
+  clearActiveSandbox,
+  enqueue,
+  getActiveSandbox,
+  getQueueLength,
+  type ActiveSandbox,
+  setActiveSandbox,
+} from '../core/session-state.js';
+import { getSandboxConfig } from '../platform/load-sandbox-config.js';
+import type { WorkspacePaths } from '../core/workspace.js';
+import type { SandboxConfig } from '../platform/schema.js';
 
-export function createAgentRouter() {
+type AgentRouterDeps = {
+  setupWorkspace: () => Promise<WorkspacePaths>;
+  ensureFileWatcher: (workspace: WorkspacePaths) => Promise<void>;
+  runAgentSandbox: (options: RunSandboxOptions) => Promise<void>;
+  buildStreamName: (sandboxId: string) => string;
+  getEventBackend: typeof getEventBackend;
+  getLocalEvents: typeof getLocalEvents;
+  clearActiveSandbox: typeof clearActiveSandbox;
+  enqueue: typeof enqueue;
+  getActiveSandbox: () => ActiveSandbox | null;
+  getQueueLength: typeof getQueueLength;
+  setActiveSandbox: typeof setActiveSandbox;
+  getSandboxConfig: () => SandboxConfig;
+};
+
+const defaultDeps: AgentRouterDeps = {
+  setupWorkspace,
+  ensureFileWatcher,
+  runAgentSandbox,
+  buildStreamName,
+  getEventBackend,
+  getLocalEvents,
+  clearActiveSandbox,
+  enqueue,
+  getActiveSandbox,
+  getQueueLength,
+  setActiveSandbox,
+  getSandboxConfig,
+};
+
+export function createAgentRouter(deps: AgentRouterDeps = defaultDeps) {
   const router = Router();
 
   router.get('/health', (_req: Request, res: Response) => {
+    const config = deps.getSandboxConfig();
     res.json({
       status: 'healthy',
       workspace: WORKSPACE_DIR,
-      model: CODEX_MODEL,
-      provider: CODEX_PROVIDER,
-      eventBackend: getEventBackend(),
+      configProfile: config.configProfile,
+      eventBackend: deps.getEventBackend(),
       timestamp: new Date().toISOString(),
     });
   });
 
   router.post('/agent/query', async (req: Request, res: Response) => {
-    const requestStartTime = Date.now();
-    const { prompt, sessionId, context, ourSessionId } = req.body ?? {};
-    const agentTokenHeader = typeof req.headers.authorization === 'string' ? req.headers.authorization : null;
+    const { prompt, sandboxId, sessionId, systemPrompt, metadata } = req.body ?? {};
+    const agentToken = typeof req.headers.authorization === 'string' ? req.headers.authorization : undefined;
 
     if (!prompt || typeof prompt !== 'string') {
-      return res.status(400).json({ error: 'Prompt is required and must be a string' });
+      return res.status(400).json({ error: 'prompt is required and must be a string' });
     }
 
-    if (!ourSessionId || typeof ourSessionId !== 'string') {
-      return res.status(400).json({ error: 'ourSessionId is required for stream identification' });
+    if (!sandboxId || typeof sandboxId !== 'string') {
+      return res.status(400).json({ error: 'sandboxId is required and must be a string' });
     }
 
     const isResuming = typeof sessionId === 'string' && sessionId.length > 0;
-    const streamSessionId = ourSessionId || `session-${Date.now()}`;
+    const streamName = deps.buildStreamName(sandboxId);
     const abortController = new AbortController();
-    const streamName = buildStreamName(streamSessionId);
 
-    if (getActiveSession()) {
-      return res.status(409).json({ error: 'A session is already running in this sandbox' });
+    // Queue if another sandbox run is active
+    if (deps.getActiveSandbox()) {
+      const position = deps.getQueueLength() + 1;
+      res.status(202).json({
+        sandboxId,
+        status: 'queued',
+        position,
+      });
+
+      await deps.enqueue(sandboxId);
+      // When we get here, the previous sandbox run is done — fall through to run
+    } else {
+      res.status(202).json({
+        sandboxId,
+        status: isResuming ? 'resuming' : 'accepted',
+      });
     }
 
     try {
-      const workspace = await setupWorkspace();
-      await ensureFileWatcher(workspace);
+      const workspace = await deps.setupWorkspace();
+      await deps.ensureFileWatcher(workspace);
 
-      setActiveSession({
-        sessionId: streamSessionId,
+      deps.setActiveSandbox({
+        sandboxId,
         abortController,
         streamName,
         workspace,
-        agentToken: agentTokenHeader || undefined,
+        agentToken,
       });
 
-      void runAgentSession({
-        sessionId: streamSessionId,
-        sdkSessionId: isResuming ? sessionId : undefined,
+      await deps.runAgentSandbox({
+        sandboxId,
+        sessionId: isResuming ? sessionId : undefined,
         prompt,
-        context,
+        systemPrompt,
+        metadata,
         abortController,
         streamName,
-        captureSdkSessionId: !isResuming,
-        ourSessionId: streamSessionId,
         isResuming,
         workspace,
-      }).catch((error) => {
-        console.error(
-          `[${new Date().toISOString()}] Unexpected session failure for ${streamSessionId}`,
-          error,
-        );
-      });
-
-      const responseTime = Date.now() - requestStartTime;
-      console.log(
-        `[${new Date().toISOString()}] Query accepted for ${streamSessionId} (${responseTime}ms)`,
-      );
-
-      return res.status(202).json({
-        sessionId: streamSessionId,
-        status: isResuming ? 'ready' : 'pending',
       });
     } catch (error) {
-      clearActiveSession();
-      console.error(`[${new Date().toISOString()}] Workspace preparation failed`, error);
-      return res.status(500).json({ error: 'Failed to prepare workspace' });
+      deps.clearActiveSandbox();
+      console.error(`[${new Date().toISOString()}] Sandbox ${sandboxId} failed unexpectedly`, error);
     }
   });
 
   router.post('/agent/interrupt', (req: Request, res: Response) => {
-    const { sessionId } = req.body ?? {};
+    const { sandboxId } = req.body ?? {};
 
-    if (!sessionId || typeof sessionId !== 'string') {
-      return res.status(400).json({ error: 'sessionId is required' });
+    if (!sandboxId || typeof sandboxId !== 'string') {
+      return res.status(400).json({ error: 'sandboxId is required' });
     }
 
-    const activeSession = getActiveSession();
-    if (!activeSession || activeSession.sessionId !== sessionId) {
-      return res.status(404).json({ error: 'Session not found or already completed' });
+    const active = deps.getActiveSandbox();
+    if (!active || active.sandboxId !== sandboxId) {
+      return res.status(404).json({ error: 'Sandbox not found or already completed' });
     }
 
-    activeSession.abortController.abort();
-    clearActiveSession();
+    active.abortController.abort();
+    deps.clearActiveSandbox();
 
-    return res.json({
-      success: true,
-      message: 'Session interrupted',
-      sessionId,
-    });
+    return res.json({ success: true, sandboxId });
   });
 
   router.get('/agent/status', (_req: Request, res: Response) => {
-    const activeSession = getActiveSession();
+    const active = deps.getActiveSandbox();
+    const config = deps.getSandboxConfig();
 
     res.json({
-      hasActiveSession: !!activeSession,
-      session: activeSession
+      hasActiveSandbox: !!active,
+      sandbox: active
         ? {
-            sessionId: activeSession.sessionId,
-            streamName: activeSession.streamName,
-            workspaceRoot: activeSession.workspace.root,
+            sandboxId: active.sandboxId,
+            streamName: active.streamName,
+            workspace: active.workspace.root,
           }
         : null,
-      workspace: WORKSPACE_DIR,
-      model: CODEX_MODEL,
-      provider: CODEX_PROVIDER,
-      eventBackend: getEventBackend(),
+      queueLength: deps.getQueueLength(),
+      configProfile: config.configProfile,
+      eventBackend: deps.getEventBackend(),
       timestamp: new Date().toISOString(),
     });
   });
 
-  router.get('/agent/events/:sessionId', (req: Request, res: Response) => {
-    const rawSessionId = req.params.sessionId;
-    const sessionId = Array.isArray(rawSessionId) ? rawSessionId[0] : rawSessionId;
-    if (!sessionId) {
-      return res.status(400).json({ error: 'sessionId parameter is required' });
+  router.get('/agent/events/:sandboxId', (req: Request, res: Response) => {
+    const rawSandboxId = req.params.sandboxId;
+    const sandboxId = Array.isArray(rawSandboxId) ? rawSandboxId[0] : rawSandboxId;
+    if (!sandboxId) {
+      return res.status(400).json({ error: 'sandboxId parameter is required' });
     }
 
     const rawLimit = Array.isArray(req.query.limit) ? req.query.limit[0] : req.query.limit;
@@ -151,12 +178,12 @@ export function createAgentRouter() {
       ? Math.max(1, Math.min(1000, Math.trunc(requestedLimit)))
       : 200;
 
-    const localEvents = getLocalEvents(sessionId, limit);
-    if (!localEvents) {
-      return res.status(404).json({ error: 'No local events found for session' });
+    const events = deps.getLocalEvents(sandboxId, limit);
+    if (!events) {
+      return res.status(404).json({ error: 'No events found for sandbox' });
     }
 
-    return res.json(localEvents);
+    return res.json(events);
   });
 
   return router;

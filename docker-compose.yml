@@ -13,20 +13,14 @@ services:
       - "9002:9000"  # Flask/Express apps
     environment:
       - OPENAI_API_KEY=${OPENAI_API_KEY}
-      - OPENAI_BASE_URL=${OPENAI_BASE_URL}
       - PORT=3000
       - WORKSPACE_DIR=/workspace
       - GATEWAY_BASE_URL=${GATEWAY_BASE_URL}
-      - CODEX_MODEL=${CODEX_MODEL:-gpt-5.2-codex}
-      - CODEX_PROVIDER=${CODEX_PROVIDER:-openai}
-      - SALAMBO_CODEX_PATH=${SALAMBO_CODEX_PATH}
       - NODE_ENV=production
       - S2_ACCESS_TOKEN=${S2_ACCESS_TOKEN}
       - S2_BASIN=${S2_BASIN}
       - S2_STREAM_PREFIX=${S2_STREAM_PREFIX:-agent-session}
-      - PATH=/app/node_modules/.bin:/usr/local/bin:/usr/bin:/bin
     volumes:
-      # Mount workspace directory (optional - for persistent data)
       - workspace-data:/workspace
       # Mount for development (comment out in production)
       # - ./src:/app/src
@@ -37,10 +31,8 @@ services:
       timeout: 3s
       retries: 3
       start_period: 5s
-    # Security options
     security_opt:
       - no-new-privileges:true
-    # Resource limits
     deploy:
       resources:
         limits:

@@ -1,7 +1,7 @@
 import fs from 'fs';
 import os from 'os';
 import path from 'path';
-import { DEFAULT_CODEX_HOME } from './paths';
+import { DEFAULT_CODEX_HOME } from './paths.js';
 
 function resolveDefaultUserCodexHome() {
   return path.join(os.homedir(), '.codex');

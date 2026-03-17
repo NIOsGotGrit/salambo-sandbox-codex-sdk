@@ -4,7 +4,7 @@ import {
   S2_ACCESS_TOKEN,
   S2_BASIN,
   S2_ENABLED,
-} from '../config/env';
+} from '../config/env.js';
 
 type JsonEventPayload = Record<string, unknown>;
 
@@ -24,7 +24,6 @@ function getS2Basin() {
   if (!S2_ACCESS_TOKEN || !S2_BASIN) {
     throw new Error('S2_ACCESS_TOKEN and S2_BASIN must be configured');
   }
-
   const s2Client = new S2({ accessToken: S2_ACCESS_TOKEN });
   return s2Client.basin(S2_BASIN);
 }
@@ -32,17 +31,8 @@ function getS2Basin() {
 type S2Stream = ReturnType<ReturnType<typeof getS2Basin>['stream']>;
 
 export type EventSink =
-  | {
-      kind: 's2';
-      sessionId: string;
-      streamName: string;
-      stream: S2Stream;
-    }
-  | {
-      kind: 'local';
-      sessionId: string;
-      streamName: string;
-    };
+  | { kind: 's2'; sandboxId: string; streamName: string; stream: S2Stream }
+  | { kind: 'local'; sandboxId: string; streamName: string };
 
 const localEventSessions = new Map<string, LocalEventSession>();
 
@@ -50,23 +40,21 @@ export function getEventBackend(): 's2' | 'local' {
   return S2_ENABLED ? 's2' : 'local';
 }
 
-function getOrCreateLocalEventSession(sessionId: string): LocalEventSession {
-  const existing = localEventSessions.get(sessionId);
-  if (existing) {
-    return existing;
-  }
+function getOrCreateLocal(sandboxId: string): LocalEventSession {
+  const existing = localEventSessions.get(sandboxId);
+  if (existing) return existing;
 
   const created: LocalEventSession = {
     events: [],
     nextSequence: 1,
     updatedAt: new Date().toISOString(),
   };
-  localEventSessions.set(sessionId, created);
+  localEventSessions.set(sandboxId, created);
   return created;
 }
 
-function recordLocalEvent(sessionId: string, streamName: string, payload: JsonEventPayload) {
-  const session = getOrCreateLocalEventSession(sessionId);
+function recordLocalEvent(sandboxId: string, streamName: string, payload: JsonEventPayload) {
+  const session = getOrCreateLocal(sandboxId);
   session.events.push({
     sequence: session.nextSequence++,
     streamName,
@@ -79,14 +67,12 @@ function recordLocalEvent(sessionId: string, streamName: string, payload: JsonEv
   }
 }
 
-export function getLocalEvents(sessionId: string, limit: number) {
-  const session = localEventSessions.get(sessionId);
-  if (!session) {
-    return null;
-  }
+export function getLocalEvents(sandboxId: string, limit: number) {
+  const session = localEventSessions.get(sandboxId);
+  if (!session) return null;
 
   return {
-    sessionId,
+    sandboxId,
     eventBackend: getEventBackend(),
     totalEvents: session.events.length,
     returnedEvents: Math.min(limit, session.events.length),
@@ -95,44 +81,28 @@ export function getLocalEvents(sessionId: string, limit: number) {
   };
 }
 
-export function createEventSink(sessionId: string, streamName: string): EventSink {
+export function createEventSink(sandboxId: string, streamName: string): EventSink {
   if (!S2_ENABLED) {
-    return {
-      kind: 'local',
-      sessionId,
-      streamName,
-    };
+    return { kind: 'local', sandboxId, streamName };
   }
-
   const basin = getS2Basin();
-  return {
-    kind: 's2',
-    sessionId,
-    streamName,
-    stream: basin.stream(streamName),
-  };
+  return { kind: 's2', sandboxId, streamName, stream: basin.stream(streamName) };
 }
 
-function isAgentSdkMessage(payload: unknown): payload is { type: string } {
-  return Boolean(payload && typeof (payload as { type?: unknown }).type === 'string');
-}
-
-export async function sendAgentMessageToStream(params: {
+export async function sendSessionEventToStream(params: {
   stream: EventSink;
-  sessionId: string;
-  sdkSessionId?: string;
-  message: unknown;
+  sandboxId: string;
+  sessionId?: string;
+  event: unknown;
   timestamp: string;
 }) {
-  const sanitizedMessage = sanitizePayload(params.message);
-  const messageType = isAgentSdkMessage(sanitizedMessage) ? sanitizedMessage.type : 'unknown';
+  const sanitizedEvent = sanitizePayload(params.event);
 
   await appendJsonEvent(params.stream, {
-    type: 'agent_message',
+    type: 'session.event',
+    sandboxId: params.sandboxId,
     sessionId: params.sessionId,
-    sdkSessionId: params.sdkSessionId,
-    messageType,
-    message: sanitizedMessage,
+    event: sanitizedEvent,
     timestamp: params.timestamp,
   });
 }
@@ -142,22 +112,20 @@ export async function appendJsonEvent(
   payload: Record<string, unknown>,
   retryCount = 0,
 ) {
+  // Always record locally first
   if (retryCount === 0) {
-    recordLocalEvent(stream.sessionId, stream.streamName, payload);
+    recordLocalEvent(stream.sandboxId, stream.streamName, payload);
   }
 
   if (stream.kind === 'local') {
     if (retryCount === 0) {
-      console.log(
-        `[${new Date().toISOString()}] LOCAL - Event ${payload.type} stored for session ${stream.sessionId}`,
-      );
+      console.log(`[${new Date().toISOString()}] LOCAL - ${payload.type} for sandbox ${stream.sandboxId}`);
     }
     return;
   }
 
   const maxRetries = 5;
-  const baseDelay = 1000;
-  const retryDelay = baseDelay * Math.pow(2, retryCount);
+  const retryDelay = 1000 * Math.pow(2, retryCount);
 
   try {
     const content = JSON.stringify(payload);
@@ -167,20 +135,11 @@ export async function appendJsonEvent(
     });
 
     if (retryCount > 0) {
-      console.log(
-        `[${new Date().toISOString()}] S2 - Retry #${retryCount} for event ${payload.type}`,
-      );
+      console.log(`[${new Date().toISOString()}] S2 - Retry #${retryCount} for ${payload.type}`);
     }
 
     await stream.stream.append(record);
-
-    if (retryCount === 0) {
-      console.log(`[${new Date().toISOString()}] S2 - Event ${payload.type} sent`);
-    } else {
-      console.log(
-        `[${new Date().toISOString()}] S2 - Event ${payload.type} sent after ${retryCount} retry(s)`,
-      );
-    }
+    console.log(`[${new Date().toISOString()}] S2 - ${payload.type} sent${retryCount > 0 ? ` after ${retryCount} retry(s)` : ''}`);
   } catch (error: any) {
     const isNetworkError =
       error?.code === 'UND_ERR_SOCKET' ||
@@ -188,14 +147,12 @@ export async function appendJsonEvent(
       error?.message?.includes('fetch failed');
 
     if (isNetworkError && retryCount < maxRetries) {
-      console.warn(
-        `[${new Date().toISOString()}] S2 - Network error, retry ${retryCount + 1}/${maxRetries} in ${retryDelay}ms`,
-      );
+      console.warn(`[${new Date().toISOString()}] S2 - Network error, retry ${retryCount + 1}/${maxRetries} in ${retryDelay}ms`);
       await new Promise((resolve) => setTimeout(resolve, retryDelay));
       return appendJsonEvent(stream, payload, retryCount + 1);
     }
 
-    console.error(`[${new Date().toISOString()}] S2 - Failed to send event ${payload.type}`, error);
+    console.error(`[${new Date().toISOString()}] S2 - Failed to send ${payload.type}`, error);
     throw error;
   }
 }

@@ -1,25 +1,50 @@
-import sandboxConfig from '../../sandbox/config';
-import type { SandboxConfig } from './sandbox-schema';
+import sandboxConfig from '../../harness-config/agent.js';
+import type { SandboxConfig } from './schema.js';
+
+let validated = false;
 
 export function getSandboxConfig(): SandboxConfig {
+  if (!validated) {
+    validateConfig(sandboxConfig);
+    validated = true;
+  }
   return sandboxConfig;
 }
 
-export function resolveSandboxSystemPrompt(context: unknown): string | undefined {
-  const config = getSandboxConfig();
+export function resolveSystemPrompt(
+  config: SandboxConfig,
+  systemPrompt?: string,
+): string {
+  if (typeof systemPrompt === 'string' && systemPrompt.trim()) {
+    return systemPrompt.trim();
+  }
+  return config.instructions;
+}
 
-  if (typeof context === 'string' && context.trim()) {
-    return context.trim();
+function validateConfig(config: SandboxConfig) {
+  const errors: string[] = [];
+
+  if (!config.configProfile || typeof config.configProfile !== 'string') {
+    errors.push('configProfile must be a non-empty string');
+  }
+  if (!config.instructions || typeof config.instructions !== 'string') {
+    errors.push('instructions must be a non-empty string');
+  }
+  if (!config.workspace?.dirs || !Array.isArray(config.workspace.dirs)) {
+    errors.push('workspace.dirs must be an array of strings');
+  }
+  if (!config.workspace?.seed || typeof config.workspace.seed !== 'string') {
+    errors.push('workspace.seed must be a non-empty string');
   }
 
-  if (
-    context &&
-    typeof context === 'object' &&
-    typeof (context as { systemPrompt?: unknown }).systemPrompt === 'string'
-  ) {
-    const systemPrompt = (context as { systemPrompt: string }).systemPrompt.trim();
-    return systemPrompt || config.agent.instructions;
+  if (errors.length > 0) {
+    console.error('\n[harness-config] Invalid harness-config/agent.ts:');
+    for (const e of errors) {
+      console.error(`  - ${e}`);
+    }
+    console.error('');
+    process.exit(1);
   }
 
-  return config.agent.instructions;
+  console.log('[harness-config] Agent config validated');
 }

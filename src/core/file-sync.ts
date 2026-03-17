@@ -1,9 +1,9 @@
 import chokidar, { type FSWatcher } from 'chokidar';
 import path from 'path';
 import { promises as fs } from 'fs';
-import { FILE_WATCH_STABILITY_MS, GATEWAY_BASE_URL } from '../config/env';
-import type { WorkspacePaths } from './workspace';
-import { getActiveSession } from './session-state';
+import { FILE_WATCH_STABILITY_MS, GATEWAY_BASE_URL } from '../config/env.js';
+import type { WorkspacePaths } from './workspace.js';
+import { getActiveSandbox } from './session-state.js';
 
 let fileWatcher: FSWatcher | null = null;
 
@@ -73,7 +73,7 @@ async function handleFileUpload(
   event: 'add' | 'change',
 ) {
   const displayPath = buildDisplayPath(outputsDir, targetPath);
-  const agentToken = getActiveSession()?.agentToken;
+  const agentToken = getActiveSandbox()?.agentToken;
   if (!displayPath || !agentToken) {
     return;
   }
@@ -96,7 +96,7 @@ async function handleFileUpload(
 
 async function handleFileDelete(outputsDir: string, targetPath: string) {
   const displayPath = buildDisplayPath(outputsDir, targetPath);
-  const agentToken = getActiveSession()?.agentToken;
+  const agentToken = getActiveSandbox()?.agentToken;
   if (!displayPath || !agentToken) {
     return;
   }

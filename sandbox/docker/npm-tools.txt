@@ -1,3 +1,0 @@
-# Add one global package per line if your sandbox needs extra CLIs.
-# Example:
-# @openai/codex
