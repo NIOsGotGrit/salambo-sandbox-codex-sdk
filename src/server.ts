@@ -39,7 +39,7 @@ export function startServer() {
   console.log(`\nCustomize: harness-config/agent.ts`);
   console.log(`\nEndpoints:`);
   console.log(`  GET  /health`);
-  console.log(`  POST /agent/query            { sandboxId, prompt, systemPrompt?, sdkSessionId?, metadata? }`);
+  console.log(`  POST /agent/query            { sandboxId, prompt, systemPrompt?, sessionId?, metadata? }`);
   console.log(`  POST /agent/interrupt         { sandboxId }`);
   console.log(`  GET  /agent/status`);
   console.log(`  GET  /agent/events/:sandboxId`);

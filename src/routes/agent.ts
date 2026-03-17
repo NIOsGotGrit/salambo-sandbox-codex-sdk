@@ -65,7 +65,7 @@ export function createAgentRouter(deps: AgentRouterDeps = defaultDeps) {
   });
 
   router.post('/agent/query', async (req: Request, res: Response) => {
-    const { prompt, sandboxId, sdkSessionId, systemPrompt, metadata } = req.body ?? {};
+    const { prompt, sandboxId, sessionId, systemPrompt, metadata } = req.body ?? {};
     const agentToken = typeof req.headers.authorization === 'string' ? req.headers.authorization : undefined;
 
     if (!prompt || typeof prompt !== 'string') {
@@ -76,7 +76,7 @@ export function createAgentRouter(deps: AgentRouterDeps = defaultDeps) {
       return res.status(400).json({ error: 'sandboxId is required and must be a string' });
     }
 
-    const isResuming = typeof sdkSessionId === 'string' && sdkSessionId.length > 0;
+    const isResuming = typeof sessionId === 'string' && sessionId.length > 0;
     const streamName = deps.buildStreamName(sandboxId);
     const abortController = new AbortController();
 
@@ -112,7 +112,7 @@ export function createAgentRouter(deps: AgentRouterDeps = defaultDeps) {
 
       await deps.runAgentSandbox({
         sandboxId,
-        sdkSessionId: isResuming ? sdkSessionId : undefined,
+        sessionId: isResuming ? sessionId : undefined,
         prompt,
         systemPrompt,
         metadata,

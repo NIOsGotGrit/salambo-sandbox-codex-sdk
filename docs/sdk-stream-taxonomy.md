@@ -148,7 +148,7 @@ Conceptually these are sandbox lifecycle events, not Codex thread events.
 The ID split is:
 
 - `sandboxId` = sandbox/app run
-- `sdkSessionId` = underlying Codex thread/session
+- `sessionId` = underlying Codex thread/session
 
 This is closer to the right long-term direction than the earlier `task` naming, because it clearly separates:
 

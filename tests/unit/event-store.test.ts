@@ -21,7 +21,7 @@ test('sendSessionEventToStream stores raw protocol events under session.event', 
   await sendSessionEventToStream({
     stream: createEventSink(sandboxId, 'agent-session:sandbox-test-1'),
     sandboxId,
-    sdkSessionId: 'sdk-session-1',
+    sessionId: 'sdk-session-1',
     event: rawEvent,
     timestamp,
   });
@@ -34,7 +34,7 @@ test('sendSessionEventToStream stores raw protocol events under session.event', 
   assert.deepEqual(payload, {
     type: 'session.event',
     sandboxId,
-    sdkSessionId: 'sdk-session-1',
+    sessionId: 'sdk-session-1',
     event: rawEvent,
     timestamp,
   });

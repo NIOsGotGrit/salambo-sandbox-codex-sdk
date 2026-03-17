@@ -20,7 +20,7 @@ import {
 
 export type RunSandboxOptions = {
   sandboxId: string;
-  sdkSessionId?: string;
+  sessionId?: string;
   prompt: string;
   systemPrompt?: string;
   metadata?: Record<string, unknown>;
@@ -70,14 +70,14 @@ function serializeError(error: unknown) {
 
 async function publishSandboxReady(params: {
   stream: EventSink;
-  sdkSessionId: string;
+  sessionId: string;
   sandboxId: string;
   timestamp: string;
 }, deps: AgentRunnerDeps) {
   await deps.appendJsonEvent(params.stream, {
     type: 'sandbox.ready',
     sandboxId: params.sandboxId,
-    sdkSessionId: params.sdkSessionId,
+    sessionId: params.sessionId,
     timestamp: params.timestamp,
   });
 }
@@ -113,7 +113,7 @@ export async function runAgentSandbox(
   const startTime = Date.now();
   const stream = deps.createEventSink(options.sandboxId, options.streamName);
   const ts = () => new Date().toISOString();
-  let sdkSessionId: string | undefined = options.sdkSessionId;
+  let sessionId: string | undefined = options.sessionId;
   let messageCount = 0;
   let sdkSession: SalamboSession | null = null;
   const abortSignal = options.abortController.signal;
@@ -136,8 +136,8 @@ export async function runAgentSandbox(
     timestamp: ts(),
   });
 
-  if (options.isResuming && sdkSessionId) {
-    await publishSandboxReady({ stream, sdkSessionId, sandboxId: options.sandboxId, timestamp: ts() }, deps);
+  if (options.isResuming && sessionId) {
+    await publishSandboxReady({ stream, sessionId, sandboxId: options.sandboxId, timestamp: ts() }, deps);
   }
 
   try {
@@ -148,8 +148,8 @@ export async function runAgentSandbox(
       systemPrompt: deps.resolveSystemPrompt(config, options.systemPrompt),
     };
 
-    if (options.isResuming && options.sdkSessionId) {
-      sessionOptions.resume = options.sdkSessionId;
+    if (options.isResuming && options.sessionId) {
+      sessionOptions.resume = options.sessionId;
     }
 
     sdkSession = deps.createSession(sessionOptions);
@@ -161,11 +161,11 @@ export async function runAgentSandbox(
     await sdkSession.send(options.prompt);
 
     // Capture SDK session ID from the session object
-    if (!sdkSessionId) {
+    if (!sessionId) {
       const id = sdkSession.sessionId || sdkSession.threadId;
       if (id) {
-        sdkSessionId = id;
-        await publishSandboxReady({ stream, sdkSessionId, sandboxId: options.sandboxId, timestamp: ts() }, deps);
+        sessionId = id;
+        await publishSandboxReady({ stream, sessionId, sandboxId: options.sandboxId, timestamp: ts() }, deps);
       }
     }
 
@@ -174,15 +174,15 @@ export async function runAgentSandbox(
       if (abortSignal.aborted) break;
 
       const msgSessionId = extractSdkSessionId(message);
-      if (!sdkSessionId && msgSessionId) {
-        sdkSessionId = msgSessionId;
-        await publishSandboxReady({ stream, sdkSessionId, sandboxId: options.sandboxId, timestamp: ts() }, deps);
+      if (!sessionId && msgSessionId) {
+        sessionId = msgSessionId;
+        await publishSandboxReady({ stream, sessionId, sandboxId: options.sandboxId, timestamp: ts() }, deps);
       }
 
       await deps.sendSessionEventToStream({
         stream,
         sandboxId: options.sandboxId,
-        sdkSessionId,
+        sessionId,
         event: message,
         timestamp: ts(),
       });
@@ -191,7 +191,7 @@ export async function runAgentSandbox(
     await deps.appendJsonEvent(stream, {
       type: abortSignal.aborted ? 'sandbox.cancelled' : 'sandbox.complete',
       sandboxId: options.sandboxId,
-      sdkSessionId,
+      sessionId,
       timestamp: ts(),
     });
   } catch (error) {
@@ -202,7 +202,7 @@ export async function runAgentSandbox(
       await deps.appendJsonEvent(stream, {
         type: aborted ? 'sandbox.cancelled' : 'sandbox.error',
         sandboxId: options.sandboxId,
-        sdkSessionId,
+        sessionId,
         error: aborted ? undefined : serializeError(error),
         timestamp: ts(),
       });

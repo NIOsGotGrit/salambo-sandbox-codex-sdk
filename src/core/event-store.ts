@@ -92,7 +92,7 @@ export function createEventSink(sandboxId: string, streamName: string): EventSin
 export async function sendSessionEventToStream(params: {
   stream: EventSink;
   sandboxId: string;
-  sdkSessionId?: string;
+  sessionId?: string;
   event: unknown;
   timestamp: string;
 }) {
@@ -101,7 +101,7 @@ export async function sendSessionEventToStream(params: {
   await appendJsonEvent(params.stream, {
     type: 'session.event',
     sandboxId: params.sandboxId,
-    sdkSessionId: params.sdkSessionId,
+    sessionId: params.sessionId,
     event: sanitizedEvent,
     timestamp: params.timestamp,
   });
