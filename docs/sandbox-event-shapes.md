@@ -9,16 +9,16 @@ It intentionally does **not** document the inner SDK payload schema in detail.
 
 The sandbox emits two families of events:
 
-- `sandbox.*`
+- `sandbox.run.*`
 - `session.event`
 
-## `sandbox.init`
+## `sandbox.run.init`
 
 Emitted when a sandbox run starts.
 
 ```json
 {
-  "type": "sandbox.init",
+  "type": "sandbox.run.init",
   "sandboxId": "sandbox-123",
   "workspace": "/workspace",
   "promptPreview": "User prompt preview",
@@ -27,52 +27,52 @@ Emitted when a sandbox run starts.
 }
 ```
 
-## `sandbox.ready`
+## `sandbox.run.ready`
 
 Emitted once the inner SDK session is known.
 
 ```json
 {
-  "type": "sandbox.ready",
+  "type": "sandbox.run.ready",
   "sandboxId": "sandbox-123",
   "sessionId": "sdk-session-123",
   "timestamp": "2026-03-17T12:00:01.000Z"
 }
 ```
 
-## `sandbox.complete`
+## `sandbox.run.complete`
 
 Emitted when the sandbox run finishes successfully.
 
 ```json
 {
-  "type": "sandbox.complete",
+  "type": "sandbox.run.complete",
   "sandboxId": "sandbox-123",
   "sessionId": "sdk-session-123",
   "timestamp": "2026-03-17T12:00:05.000Z"
 }
 ```
 
-## `sandbox.cancelled`
+## `sandbox.run.cancelled`
 
 Emitted when the sandbox run is cancelled or aborted.
 
 ```json
 {
-  "type": "sandbox.cancelled",
+  "type": "sandbox.run.cancelled",
   "sandboxId": "sandbox-123",
   "sessionId": "sdk-session-123",
   "timestamp": "2026-03-17T12:00:05.000Z"
 }
 ```
 
-## `sandbox.error`
+## `sandbox.run.error`
 
 Emitted when the sandbox run fails.
 
 ```json
 {
-  "type": "sandbox.error",
+  "type": "sandbox.run.error",
   "sandboxId": "sandbox-123",
   "sessionId": "sdk-session-123",
   "error": {

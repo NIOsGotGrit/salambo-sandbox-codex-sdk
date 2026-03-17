@@ -272,7 +272,7 @@ test('GET /agent/events/:sandboxId returns stored local events', async () => {
           sequence: 1,
           streamName: 'agent-session:sbx-1',
           payload: {
-            type: 'sandbox.init',
+            type: 'sandbox.run.init',
             sandboxId: 'sbx-1',
           },
         },
@@ -287,7 +287,7 @@ test('GET /agent/events/:sandboxId returns stored local events', async () => {
     assert.equal(response.status, 200);
     assert.equal(body.sandboxId, 'sbx-1');
     assert.equal(body.events.length, 1);
-    assert.equal(body.events[0]?.payload.type, 'sandbox.init');
+    assert.equal(body.events[0]?.payload.type, 'sandbox.run.init');
   });
 });
 

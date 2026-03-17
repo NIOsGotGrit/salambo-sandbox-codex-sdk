@@ -75,7 +75,7 @@ async function publishSandboxReady(params: {
   timestamp: string;
 }, deps: AgentRunnerDeps) {
   await deps.appendJsonEvent(params.stream, {
-    type: 'sandbox.ready',
+    type: 'sandbox.run.ready',
     sandboxId: params.sandboxId,
     sessionId: params.sessionId,
     timestamp: params.timestamp,
@@ -128,7 +128,7 @@ export async function runAgentSandbox(
   abortSignal.addEventListener('abort', abortListener, { once: true });
 
   await deps.appendJsonEvent(stream, {
-    type: 'sandbox.init',
+    type: 'sandbox.run.init',
     sandboxId: options.sandboxId,
     workspace: options.workspace.root,
     promptPreview: options.prompt.slice(0, 2000),
@@ -189,7 +189,7 @@ export async function runAgentSandbox(
     }
 
     await deps.appendJsonEvent(stream, {
-      type: abortSignal.aborted ? 'sandbox.cancelled' : 'sandbox.complete',
+      type: abortSignal.aborted ? 'sandbox.run.cancelled' : 'sandbox.run.complete',
       sandboxId: options.sandboxId,
       sessionId,
       timestamp: ts(),
@@ -200,7 +200,7 @@ export async function runAgentSandbox(
 
     try {
       await deps.appendJsonEvent(stream, {
-        type: aborted ? 'sandbox.cancelled' : 'sandbox.error',
+        type: aborted ? 'sandbox.run.cancelled' : 'sandbox.run.error',
         sandboxId: options.sandboxId,
         sessionId,
         error: aborted ? undefined : serializeError(error),

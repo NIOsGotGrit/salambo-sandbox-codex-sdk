@@ -26,7 +26,7 @@ function makeConfig() {
   };
 }
 
-test('runAgentSandbox emits ordered sandbox lifecycle and raw session events', async () => {
+test('runAgentSandbox emits ordered sandbox run lifecycle and raw session events', async () => {
   const clearCalls: string[] = [];
   const sentPrompts: string[] = [];
   let capturedOptions: SessionOptions | undefined;
@@ -84,18 +84,18 @@ test('runAgentSandbox emits ordered sandbox lifecycle and raw session events', a
   assert.deepEqual(
     localEvents.events.map((event) => event.payload.type),
     [
-      'sandbox.init',
-      'sandbox.ready',
+      'sandbox.run.init',
+      'sandbox.run.ready',
       'session.event',
       'session.event',
-      'sandbox.complete',
+      'sandbox.run.complete',
     ],
   );
 
   assert.deepEqual(clearCalls, ['cleared']);
 });
 
-test('runAgentSandbox emits sandbox.cancelled when aborted', async () => {
+test('runAgentSandbox emits sandbox.run.cancelled when aborted', async () => {
   const abortController = new AbortController();
   let yielded = false;
 
@@ -144,6 +144,6 @@ test('runAgentSandbox emits sandbox.cancelled when aborted', async () => {
   assert.ok(localEvents);
   assert.deepEqual(
     localEvents.events.map((event) => event.payload.type),
-    ['sandbox.init', 'sandbox.cancelled'],
+    ['sandbox.run.init', 'sandbox.run.cancelled'],
   );
 });
