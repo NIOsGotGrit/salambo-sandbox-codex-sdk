@@ -24,3 +24,10 @@ Current event types:
 - `sandbox.cancelled`
 - `sandbox.error`
 - `session.event`
+
+Identifier split:
+
+- `sandboxId` = outer sandbox/platform run
+- `sessionId` = inner SDK/Codex session when known
+
+See [sandbox-event-shapes.md](/C:/Users/nicol/WebstormProjects/salambo-sandbox/salambo-sandbox-codex-sdk/docs/sandbox-event-shapes.md) for the current global payload shapes.
