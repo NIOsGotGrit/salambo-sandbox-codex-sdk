@@ -1,0 +1,167 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "S2 Sandbox Events",
+  "description": "JSON Schema for all events sent via S2 (StreamStore) by the sandbox. Events are appended to an S2 stream named '{S2_STREAM_PREFIX}:{sandboxId}' (default prefix: 'agent-session').",
+  "definitions": {
+    "sandbox.init": {
+      "description": "Emitted when a sandbox run starts.",
+      "type": "object",
+      "required": ["type", "sandboxId", "workspace", "promptPreview", "metadata", "timestamp"],
+      "properties": {
+        "type": { "const": "sandbox.init" },
+        "sandboxId": {
+          "type": "string",
+          "description": "Outer platform/sandbox run identifier."
+        },
+        "workspace": {
+          "type": "string",
+          "description": "Absolute path to the workspace root (e.g. '/workspace')."
+        },
+        "promptPreview": {
+          "type": "string",
+          "maxLength": 2000,
+          "description": "First 2000 characters of the user prompt."
+        },
+        "metadata": {
+          "description": "Sanitized metadata object passed by the caller, or null.",
+          "oneOf": [
+            { "type": "object" },
+            { "type": "null" }
+          ]
+        },
+        "timestamp": {
+          "type": "string",
+          "format": "date-time",
+          "description": "ISO-8601 timestamp of when the event was emitted."
+        }
+      },
+      "additionalProperties": false
+    },
+    "sandbox.ready": {
+      "description": "Emitted once the inner SDK session ID becomes known.",
+      "type": "object",
+      "required": ["type", "sandboxId", "sessionId", "timestamp"],
+      "properties": {
+        "type": { "const": "sandbox.ready" },
+        "sandboxId": {
+          "type": "string",
+          "description": "Outer platform/sandbox run identifier."
+        },
+        "sessionId": {
+          "type": "string",
+          "description": "Inner SDK/Codex session identifier."
+        },
+        "timestamp": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "additionalProperties": false
+    },
+    "sandbox.complete": {
+      "description": "Emitted when the sandbox run finishes successfully (not aborted).",
+      "type": "object",
+      "required": ["type", "sandboxId", "timestamp"],
+      "properties": {
+        "type": { "const": "sandbox.complete" },
+        "sandboxId": {
+          "type": "string",
+          "description": "Outer platform/sandbox run identifier."
+        },
+        "sessionId": {
+          "type": "string",
+          "description": "Inner SDK/Codex session identifier (may be undefined if session was never established)."
+        },
+        "timestamp": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "additionalProperties": false
+    },
+    "sandbox.cancelled": {
+      "description": "Emitted when the sandbox run is cancelled or aborted.",
+      "type": "object",
+      "required": ["type", "sandboxId", "timestamp"],
+      "properties": {
+        "type": { "const": "sandbox.cancelled" },
+        "sandboxId": {
+          "type": "string",
+          "description": "Outer platform/sandbox run identifier."
+        },
+        "sessionId": {
+          "type": "string",
+          "description": "Inner SDK/Codex session identifier (may be undefined)."
+        },
+        "timestamp": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "additionalProperties": false
+    },
+    "sandbox.error": {
+      "description": "Emitted when the sandbox run fails with an exception (and was not aborted).",
+      "type": "object",
+      "required": ["type", "sandboxId", "timestamp"],
+      "properties": {
+        "type": { "const": "sandbox.error" },
+        "sandboxId": {
+          "type": "string",
+          "description": "Outer platform/sandbox run identifier."
+        },
+        "sessionId": {
+          "type": "string",
+          "description": "Inner SDK/Codex session identifier (may be undefined)."
+        },
+        "error": {
+          "type": "object",
+          "description": "Serialized error details.",
+          "properties": {
+            "message": { "type": "string" },
+            "name": { "type": "string" },
+            "stack": { "type": "string" }
+          },
+          "required": ["message"]
+        },
+        "timestamp": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "additionalProperties": false
+    },
+    "session.event": {
+      "description": "Wrapper for every raw event from the inner SDK session stream. The sandbox intentionally does NOT reinterpret the inner 'event' payload — it forwards it unchanged for platform-side interpretation.",
+      "type": "object",
+      "required": ["type", "sandboxId", "event", "timestamp"],
+      "properties": {
+        "type": { "const": "session.event" },
+        "sandboxId": {
+          "type": "string",
+          "description": "Outer platform/sandbox run identifier."
+        },
+        "sessionId": {
+          "type": "string",
+          "description": "Inner SDK/Codex session identifier (may be undefined early in the session)."
+        },
+        "event": {
+          "description": "Raw SDK protocol event, passed through unchanged. Can be a notification ({ method, params }), a server request ({ id, method, params }), a protocol reply ({ id, result } or { id, error }), or a parse error ({ type: 'parse_error', line, error })."
+        },
+        "timestamp": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  "oneOf": [
+    { "$ref": "#/definitions/sandbox.init" },
+    { "$ref": "#/definitions/sandbox.ready" },
+    { "$ref": "#/definitions/sandbox.complete" },
+    { "$ref": "#/definitions/sandbox.cancelled" },
+    { "$ref": "#/definitions/sandbox.error" },
+    { "$ref": "#/definitions/session.event" }
+  ]
+}
