@@ -128,6 +128,8 @@ The HTTP contract stays stable for the platform:
 - `POST /workspace/files/import`
 - `DELETE /workspace/sandbox/:sandboxId`
 
+Full request/response schemas, headers, error codes, and outbound gateway calls are documented in **[docs/api-endpoints.md](docs/api-endpoints.md)**.
+
 Internally this sandbox uses the SDK V2 session lifecycle, but it keeps the same outward HTTP contract and emits the S2 event contract documented in [event-contract.md](/C:/Users/nicol/WebstormProjects/salambo-sandbox/salambo-sandbox-codex-sdk/docs/event-contract.md).
 
 Example query:
