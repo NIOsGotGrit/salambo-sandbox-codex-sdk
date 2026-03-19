@@ -1,6 +1,118 @@
 # API Endpoints
 
-Every endpoint the SDK exposes on the local server, plus the outbound gateway calls it makes when `GATEWAY_BASE_URL` is set.
+This document covers:
+
+1. **App-server protocol** — the JSON-RPC methods the SDK uses to talk to the Codex runtime
+2. **Local HTTP server** — the REST endpoints the sandbox exposes
+3. **Outbound gateway** — calls made when `GATEWAY_BASE_URL` is set
+
+---
+
+## App-Server Protocol (SDK ↔ Codex Runtime)
+
+The SDK does **not** call the Codex runtime over HTTP. It spawns `codex app-server` as a child process and communicates via **JSON-RPC over stdio** — newline-delimited JSON, one message per line.
+
+### Binary Resolution
+
+The SDK resolves the Codex binary in this order:
+
+1. `SALAMBO_CODEX_PATH` environment variable
+2. `codex` found in `PATH` (spawned as `codex app-server`)
+3. `codex-app-server` found in `PATH` (spawned directly, no subcommand)
+
+Minimum supported version: `0.114.0`.
+
+### Requests (SDK → app server)
+
+| Method | Params | Response | Purpose |
+|--------|--------|----------|---------|
+| `initialize` | `{ clientInfo, capabilities }` | `{ userAgent }` | Handshake — declares client name/version |
+| `thread/start` | `{ configProfile, cwd, baseInstructions, ephemeral, experimentalRawEvents, ... }` | `{ thread, model, modelProvider, cwd, approvalPolicy, sandbox, reasoningEffort }` | Create a new conversation thread |
+| `thread/resume` | `{ threadId }` | `{ thread }` | Resume an existing thread |
+| `turn/start` | `{ threadId, input, outputSchema, ... }` | `{ turn }` | Send a user prompt / start a turn |
+| `turn/steer` | `{ threadId, expectedTurnId, input }` | `{ turnId, status }` | Redirect the active turn mid-flight |
+| `turn/interrupt` | `{ threadId, turnId }` | — | Interrupt the running turn |
+
+### Notifications (SDK → app server)
+
+| Method | Purpose |
+|--------|---------|
+| `initialized` | Sent after `initialize` succeeds |
+
+### Requests (app server → SDK)
+
+The app server sends these as requests (with an `id`), expecting a JSON-RPC response:
+
+| Method | Purpose |
+|--------|---------|
+| `item/commandExecution/requestApproval` | Ask permission to run a shell command |
+| `item/fileChange/requestApproval` | Ask permission to write/patch files |
+| `item/tool/requestUserInput` | Ask the user a question (multi-choice) |
+| `item/tool/call` | Dynamic tool call |
+| `applyPatchApproval` | Ask permission to apply a multi-file patch |
+| `execCommandApproval` | Ask permission to execute a command (legacy) |
+| `account/chatgptAuthTokens/refresh` | Request refreshed auth tokens |
+
+### Notifications (app server → SDK)
+
+The app server streams these as notifications (no `id`, no response expected):
+
+| Method | Description |
+|--------|-------------|
+| `error` | Turn-level error |
+| `thread/started` | Thread was created |
+| `thread/archived` | Thread was archived |
+| `thread/unarchived` | Thread was unarchived |
+| `thread/name/updated` | Thread name changed |
+| `thread/tokenUsage/updated` | Token usage update |
+| `thread/compacted` | Context was compacted |
+| `turn/started` | Turn started |
+| `turn/completed` | Turn finished |
+| `turn/diff/updated` | Aggregated diff updated |
+| `turn/plan/updated` | Plan steps updated |
+| `item/started` | Turn item started |
+| `item/completed` | Turn item completed |
+| `item/agentMessage/delta` | Streaming agent message chunk |
+| `item/plan/delta` | Streaming plan delta |
+| `item/commandExecution/outputDelta` | Command stdout/stderr chunk |
+| `item/commandExecution/terminalInteraction` | Terminal stdin interaction |
+| `item/fileChange/outputDelta` | File change output chunk |
+| `item/mcpToolCall/progress` | MCP tool call progress |
+| `item/reasoning/summaryTextDelta` | Reasoning summary delta |
+| `item/reasoning/summaryPartAdded` | New reasoning summary section |
+| `item/reasoning/textDelta` | Raw reasoning delta |
+| `rawResponseItem/completed` | Raw Responses API item (experimental) |
+| `mcpServer/oauthLogin/completed` | MCP OAuth login result |
+| `account/updated` | Auth mode changed |
+| `account/rateLimits/updated` | Rate limit snapshot |
+| `account/login/completed` | Login completed |
+| `app/list/updated` | App list changed |
+| `model/rerouted` | Model was rerouted |
+| `deprecationNotice` | Deprecation warning |
+| `configWarning` | Config issue |
+| `fuzzyFileSearch/sessionUpdated` | File search results |
+| `fuzzyFileSearch/sessionCompleted` | File search done |
+| `sessionConfigured` | Session config snapshot |
+
+### Wire Format
+
+Each message is a single JSON object terminated by `\n`:
+
+```
+→ stdin:  {"method":"initialize","id":1,"params":{"clientInfo":{"name":"salambo","title":"Salambo Agent SDK","version":"0.1.0"},"capabilities":{"experimentalApi":false}}}
+← stdout: {"id":1,"result":{"userAgent":"codex/0.114.0"}}
+→ stdin:  {"method":"initialized","params":{}}
+→ stdin:  {"method":"thread/start","id":2,"params":{"configProfile":"default","cwd":"/workspace"}}
+← stdout: {"id":2,"result":{"thread":{"id":"..."},...}}
+→ stdin:  {"method":"turn/start","id":3,"params":{"threadId":"...","input":[{"type":"text","text":"Hello"}]}}
+← stdout: {"id":3,"result":{"turn":{"id":"...","status":"inProgress"}}}
+← stdout: {"method":"item/agentMessage/delta","params":{"threadId":"...","turnId":"...","itemId":"...","delta":"Hi"}}
+← stdout: {"method":"turn/completed","params":{"threadId":"...","turn":{...}}}
+```
+
+---
+
+## Local HTTP Server
 
 Base URL: `http://localhost:{PORT}` (default `PORT` = `3000`).
 
