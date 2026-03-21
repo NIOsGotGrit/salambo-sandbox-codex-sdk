@@ -18,11 +18,11 @@ Those files define:
 
 Current event types:
 
-- `sandbox.init`
-- `sandbox.ready`
-- `sandbox.complete`
-- `sandbox.cancelled`
-- `sandbox.error`
+- `sandbox.run.init`
+- `sandbox.run.ready`
+- `sandbox.run.complete`
+- `sandbox.run.cancelled`
+- `sandbox.run.error`
 - `session.event`
 
 Identifier split:

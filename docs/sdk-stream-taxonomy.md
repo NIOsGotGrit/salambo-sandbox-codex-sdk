@@ -137,11 +137,11 @@ Even with raw SDK events, the sandbox still owns its outer lifecycle.
 
 Current sandbox lifecycle events are:
 
-- `sandbox.init`
-- `sandbox.ready`
-- `sandbox.complete`
-- `sandbox.cancelled`
-- `sandbox.error`
+- `sandbox.run.init`
+- `sandbox.run.ready`
+- `sandbox.run.complete`
+- `sandbox.run.cancelled`
+- `sandbox.run.error`
 
 Conceptually these are sandbox lifecycle events, not Codex thread events.
 
@@ -159,11 +159,11 @@ This is closer to the right long-term direction than the earlier `task` naming, 
 
 If we evolve the S2 contract, the cleaner long-term naming is:
 
-- `sandbox.init`
-- `sandbox.ready`
-- `sandbox.complete`
-- `sandbox.cancelled`
-- `sandbox.error`
+- `sandbox.run.init`
+- `sandbox.run.ready`
+- `sandbox.run.complete`
+- `sandbox.run.cancelled`
+- `sandbox.run.error`
 - `session.event`
 
 The sandbox should not classify inner protocol frames further than that.
@@ -220,11 +220,11 @@ The platform and sandbox should be updated together against the new SDK stream m
 Current preferred S2 shape:
 
 - outer sandbox lifecycle events:
-  - `sandbox.init`
-  - `sandbox.ready`
-  - `sandbox.complete`
-  - `sandbox.cancelled`
-  - `sandbox.error`
+  - `sandbox.run.init`
+  - `sandbox.run.ready`
+  - `sandbox.run.complete`
+  - `sandbox.run.cancelled`
+  - `sandbox.run.error`
 - one inner raw stream event:
   - `session.event`
 

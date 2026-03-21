@@ -60,7 +60,7 @@ This layer explains:
 2. The platform layer prepares the workspace and event sink.
 3. The SDK session starts using `harness-config/agent.ts` and `harness-config/codex-home/config.toml`.
 4. The sandbox emits:
-   - `sandbox.*` lifecycle events
+   - `sandbox.run.*` lifecycle events
    - raw `session.event` payloads
 5. The platform consumes those events downstream for logging, SSE, and projections.
 
@@ -69,7 +69,7 @@ This layer explains:
 These should not change lightly:
 
 - route shapes under `src/routes/`
-- `sandbox.*` lifecycle events
+- `sandbox.run.*` lifecycle events
 - `session.event` transport shape
 - `/workspace/work` and `/workspace/outputs` semantics
 - bootstrap/auth behavior in Docker
