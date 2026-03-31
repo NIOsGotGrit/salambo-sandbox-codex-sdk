@@ -124,21 +124,22 @@ async function sendFileUpload(params: {
     return;
   }
 
-  const formData = new FormData();
-  formData.append('displayPath', params.displayPath);
-  formData.append('event', params.event);
-  formData.append(
-    'file',
-    new Blob([bufferToArrayBuffer(params.buffer)]),
-    params.displayPath.split('/').pop() || 'file',
-  );
+  const fileName = params.displayPath.split('/').pop() || 'file';
+  const body = new Blob([new Uint8Array(params.buffer)], {
+    type: 'application/octet-stream',
+  });
 
   const response = await fetch(`${GATEWAY_BASE_URL}/api/daytona/files`, {
     method: 'POST',
+    redirect: 'error',
     headers: {
       Authorization: params.agentToken,
+      'Content-Type': 'application/octet-stream',
+      'X-Display-Path': params.displayPath,
+      'X-File-Event': params.event,
+      'X-File-Name': fileName,
     },
-    body: formData,
+    body,
   });
 
   if (!response.ok) {
@@ -173,9 +174,4 @@ async function sendFileDelete(params: { displayPath: string; agentToken: string 
       errorText,
     });
   }
-}
-
-function bufferToArrayBuffer(buffer: Buffer) {
-  const view = Uint8Array.from(buffer);
-  return view.buffer;
 }
