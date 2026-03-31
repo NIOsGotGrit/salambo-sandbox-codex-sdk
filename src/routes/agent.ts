@@ -12,6 +12,7 @@ import {
   clearActiveSandbox,
   enqueue,
   getActiveSandbox,
+  hasActiveWork,
   getQueueLength,
   type ActiveSandbox,
   setActiveSandbox,
@@ -30,6 +31,7 @@ type AgentRouterDeps = {
   clearActiveSandbox: typeof clearActiveSandbox;
   enqueue: typeof enqueue;
   getActiveSandbox: () => ActiveSandbox | null;
+  hasActiveWork: typeof hasActiveWork;
   getQueueLength: typeof getQueueLength;
   setActiveSandbox: typeof setActiveSandbox;
   getSandboxConfig: () => SandboxConfig;
@@ -45,6 +47,7 @@ const defaultDeps: AgentRouterDeps = {
   clearActiveSandbox,
   enqueue,
   getActiveSandbox,
+  hasActiveWork,
   getQueueLength,
   setActiveSandbox,
   getSandboxConfig,
@@ -81,7 +84,7 @@ export function createAgentRouter(deps: AgentRouterDeps = defaultDeps) {
     const abortController = new AbortController();
 
     // Queue if another sandbox run is active
-    if (deps.getActiveSandbox()) {
+    if (deps.hasActiveWork()) {
       const position = deps.getQueueLength() + 1;
       res.status(202).json({
         sandboxId,

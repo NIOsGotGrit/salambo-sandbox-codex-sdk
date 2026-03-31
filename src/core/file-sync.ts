@@ -3,7 +3,7 @@ import path from 'path';
 import { promises as fs } from 'fs';
 import { FILE_WATCH_STABILITY_MS, GATEWAY_BASE_URL } from '../config/env.js';
 import type { WorkspacePaths } from './workspace.js';
-import { getActiveSandbox } from './session-state.js';
+import { acquireUploadContext, releaseUploadContext } from './session-state.js';
 
 let fileWatcher: FSWatcher | null = null;
 
@@ -73,8 +73,16 @@ async function handleFileUpload(
   event: 'add' | 'change',
 ) {
   const displayPath = buildDisplayPath(outputsDir, targetPath);
-  const agentToken = getActiveSandbox()?.agentToken;
-  if (!displayPath || !agentToken) {
+  if (!displayPath) {
+    return;
+  }
+
+  const uploadContext = acquireUploadContext();
+  if (!uploadContext) {
+    console.warn(`[${new Date().toISOString()}] Skipping file sync without upload context`, {
+      path: displayPath,
+      event,
+    });
     return;
   }
 
@@ -84,33 +92,44 @@ async function handleFileUpload(
       displayPath,
       buffer,
       event,
-      agentToken,
+      agentToken: uploadContext.agentToken,
     });
   } catch (error) {
     console.error(`[${new Date().toISOString()}] Failed to sync file`, {
       path: displayPath,
       error,
     });
+  } finally {
+    releaseUploadContext(uploadContext.sandboxId);
   }
 }
 
 async function handleFileDelete(outputsDir: string, targetPath: string) {
   const displayPath = buildDisplayPath(outputsDir, targetPath);
-  const agentToken = getActiveSandbox()?.agentToken;
-  if (!displayPath || !agentToken) {
+  if (!displayPath) {
+    return;
+  }
+
+  const uploadContext = acquireUploadContext();
+  if (!uploadContext) {
+    console.warn(`[${new Date().toISOString()}] Skipping file delete without upload context`, {
+      path: displayPath,
+    });
     return;
   }
 
   try {
     await sendFileDelete({
       displayPath,
-      agentToken,
+      agentToken: uploadContext.agentToken,
     });
   } catch (error) {
     console.error(`[${new Date().toISOString()}] Failed to notify delete`, {
       path: displayPath,
       error,
     });
+  } finally {
+    releaseUploadContext(uploadContext.sandboxId);
   }
 }
 

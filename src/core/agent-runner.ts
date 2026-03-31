@@ -12,7 +12,7 @@ import {
   sendSessionEventToStream,
   type EventSink,
 } from './event-store.js';
-import { clearActiveSandbox } from './session-state.js';
+import { finishSandboxLifecycle } from './session-state.js';
 import {
   getSandboxConfig,
   resolveSystemPrompt,
@@ -35,7 +35,7 @@ type AgentRunnerDeps = {
   createEventSink: typeof createEventSink;
   appendJsonEvent: typeof appendJsonEvent;
   sendSessionEventToStream: typeof sendSessionEventToStream;
-  clearActiveSandbox: typeof clearActiveSandbox;
+  finishSandboxLifecycle: typeof finishSandboxLifecycle;
   getSandboxConfig: typeof getSandboxConfig;
   resolveSystemPrompt: typeof resolveSystemPrompt;
 };
@@ -45,7 +45,7 @@ const defaultDeps: AgentRunnerDeps = {
   createEventSink,
   appendJsonEvent,
   sendSessionEventToStream,
-  clearActiveSandbox,
+  finishSandboxLifecycle,
   getSandboxConfig,
   resolveSystemPrompt,
 };
@@ -216,7 +216,7 @@ export async function runAgentSandbox(
       try { await sdkSession[Symbol.asyncDispose](); } catch { /* best effort */ }
     }
 
-    deps.clearActiveSandbox();
+    deps.finishSandboxLifecycle(options.sandboxId);
     const duration = Date.now() - startTime;
     console.log(`[${ts()}] Sandbox ${options.sandboxId} finished in ${duration}ms (${messageCount} messages)`);
   }

@@ -12,7 +12,7 @@ export const SANDBOX_FILE_LOGGING = process.env.SANDBOX_FILE_LOGGING !== 'false'
 export const SANDBOX_LOG_DIR = process.env.SANDBOX_LOG_DIR || '/tmp/sandbox-logs';
 export const SANDBOX_LOG_FILE = process.env.SANDBOX_LOG_FILE || 'agent-api.log';
 
-export const GATEWAY_BASE_URL = process.env.GATEWAY_BASE_URL;
+export const GATEWAY_BASE_URL = process.env.GATEWAY_BASE_URL?.replace(/\/+$/, '');
 export const OPENAI_API_KEY = process.env.OPENAI_API_KEY;
 
 export const S2_ACCESS_TOKEN = process.env.S2_ACCESS_TOKEN;
