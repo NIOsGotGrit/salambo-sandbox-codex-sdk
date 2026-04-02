@@ -45,6 +45,14 @@ RUN if grep -Eq '\S' /tmp/image-config/requirements.txt; then \
       pip install --no-cache-dir -r /tmp/image-config/requirements.txt; \
     fi
 
+# Install an optional Salambo egress proxy CA into the system trust store.
+RUN if [ -f /app/harness-config/certs/salambo-egress-proxy-ca.crt ]; then \
+      mkdir -p /usr/local/share/ca-certificates/salambo && \
+      cp /app/harness-config/certs/salambo-egress-proxy-ca.crt /usr/local/share/ca-certificates/salambo/salambo-egress-proxy-ca.crt && \
+      cp /app/harness-config/certs/salambo-egress-proxy-ca.crt /etc/ssl/certs/salambo-egress-proxy-ca.pem && \
+      update-ca-certificates; \
+    fi
+
 # Copy initial workspace files
 COPY --chown=node:node harness-config/initial-workspace/ /workspace/
 

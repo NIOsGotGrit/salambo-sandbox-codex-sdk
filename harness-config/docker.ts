@@ -8,6 +8,7 @@ export default defineImage({
     'python3-venv',
     'python3-pip',
     'curl',
+    'ca-certificates',
     'vim',
   ],
 
