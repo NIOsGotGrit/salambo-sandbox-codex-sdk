@@ -1,6 +1,6 @@
 {
   "name": "salambo-sandbox-codex-sdk",
-  "version": "2.0.1",
+  "version": "2.0.5",
   "description": "Dockerized sandbox for salambo-codex-agent-sdk with HTTP API",
   "type": "module",
   "main": "dist/src/server.js",
@@ -40,7 +40,8 @@
     "cors": "^2.8.5",
     "dotenv": "^16.4.5",
     "express": "^4.21.1",
-    "salambo-codex-agent-sdk": "^1.0.0"
+    "salambo-codex-agent-sdk": "^1.0.0",
+    "undici": "^7.16.0"
   },
   "devDependencies": {
     "@types/cors": "^2.8.17",

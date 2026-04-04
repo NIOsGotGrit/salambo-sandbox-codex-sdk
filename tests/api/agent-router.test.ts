@@ -70,6 +70,7 @@ function createRouterHarness(options?: {
       await (options?.enqueuePromise ?? Promise.resolve());
     },
     getActiveSandbox: () => activeSandbox,
+    hasActiveWork: () => activeSandbox !== null || (options?.queueLength ?? 0) > 0,
     getQueueLength: () => options?.queueLength ?? 0,
     setActiveSandbox: (sandbox: ActiveSandbox | null) => {
       activeSandbox = sandbox;

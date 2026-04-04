@@ -1,6 +1,7 @@
 import express, { type NextFunction, type Request, type Response } from 'express';
 import cors from 'cors';
 import { PORT, WORKSPACE_DIR, logStartupWarnings } from './config/env.js';
+import { installGlobalProxySupport } from './config/proxy.js';
 import { installFileLogger } from './logging/file-logger.js';
 import { createAgentRouter } from './routes/agent.js';
 import { createWorkspaceRouter } from './routes/workspace.js';
@@ -28,6 +29,7 @@ export function createApp() {
 
 export function startServer() {
   installFileLogger();
+  installGlobalProxySupport();
   const config = getSandboxConfig();
   logStartupWarnings();
   const app = createApp();
